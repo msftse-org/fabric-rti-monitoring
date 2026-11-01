@@ -46,17 +46,29 @@ def receiver(response=None, status=200):
 
 class DemoTests(unittest.TestCase):
     def test_payloads_correlate_log_and_parent_child_spans(self):
-        payloads = emit.make_payloads(4, now_ns=1_800_000_000_000_000_000)
-        spans = payloads["traces"]["resourceSpans"][0]["scopeSpans"][0]["spans"]
+        run_id = "6dce8097-c1fb-4b7a-9ac7-ebea106b8334"
+        payloads = emit.make_payloads(4, now_ns=1_800_000_000_000_000_000, run_id=run_id)
+        resource_spans = payloads["traces"]["resourceSpans"]
+        spans = [r["scopeSpans"][0]["spans"][0] for r in resource_spans]
         log = payloads["logs"]["resourceLogs"][0]["scopeLogs"][0]["logRecords"][0]
-        root, child = spans
+        root = spans[0]
+        services = [{a["key"]: a["value"] for a in r["resource"]["attributes"]}["service.name"]["stringValue"] for r in resource_spans]
+        self.assertEqual(services, ["gateway", "checkout", "payment", "postgres"])
+        self.assertEqual([s["name"] for s in spans], ["demo.request", "demo.checkout", "demo.payment", "demo.postgres.query"])
         self.assertRegex(root["traceId"], r"^[0-9a-f]{32}$")
         self.assertRegex(root["spanId"], r"^[0-9a-f]{16}$")
         self.assertEqual((root["traceId"], root["spanId"]), (log["traceId"], log["spanId"]))
-        self.assertEqual(root["traceId"], child["traceId"])
-        self.assertEqual(root["spanId"], child["parentSpanId"])
-        self.assertLess(int(root["startTimeUnixNano"]), int(child["startTimeUnixNano"]))
-        self.assertLess(int(child["endTimeUnixNano"]), int(root["endTimeUnixNano"]))
+        self.assertNotIn("parentSpanId", root)
+        self.assertEqual(len({s["spanId"] for s in spans}), 4)
+        for parent, child in zip(spans, spans[1:]):
+            self.assertEqual(root["traceId"], child["traceId"])
+            self.assertEqual(parent["spanId"], child["parentSpanId"])
+            self.assertLess(int(parent["startTimeUnixNano"]), int(child["startTimeUnixNano"]))
+            self.assertLess(int(child["endTimeUnixNano"]), int(parent["endTimeUnixNano"]))
+        for record in [*spans, log]:
+            self.assertIn(emit.attribute("demo.run_id", run_id), record["attributes"])
+        for resource in resource_spans:
+            self.assertNotIn("demo.run_id", {a["key"] for a in resource["resource"]["attributes"]})
         self.assertEqual(root["status"]["code"], 2)
         self.assertEqual(log["severityNumber"], 17)
 
@@ -73,6 +85,16 @@ class DemoTests(unittest.TestCase):
         resource = payload["resourceMetrics"][0]["resource"]["attributes"]
         self.assertIn(emit.attribute("demo.synthetic", True), resource)
 
+    def test_cloud_batch_preserves_request_and_error_counts(self):
+        payloads = [emit.make_payloads(index, run_id="batch-test") for index in range(60)]
+        resources = [resource for payload in payloads for resource in payload["traces"]["resourceSpans"]]
+        spans = [resource["scopeSpans"][0]["spans"][0] for resource in resources]
+        root_spans = [span for span in spans if span["name"] == "demo.request"]
+        self.assertEqual(len(spans), 240)
+        self.assertEqual(len(root_spans), 60)
+        self.assertEqual(sum(span["status"]["code"] == 2 for span in root_spans), 12)
+        self.assertEqual(len({span["traceId"] for span in root_spans}), 60)
+
     def test_http_emission_sends_each_signal_and_reports_acknowledgement(self):
         with receiver() as (endpoint, received), contextlib.redirect_stdout(io.StringIO()) as output:
             result = emit.main(["--endpoint", endpoint, "--count", "5", "--interval", "0"])
@@ -81,7 +103,20 @@ class DemoTests(unittest.TestCase):
         self.assertEqual({r[0] for r in received}, {"/v1/traces", "/v1/logs", "/v1/metrics"})
         self.assertTrue(all(r[1] == "application/json" for r in received))
         self.assertIn("Verify ingestion separately", output.getvalue())
-        self.assertIn("10 spans, 5 logs", output.getvalue())
+        self.assertIn("20 spans, 5 logs", output.getvalue())
+        run_id = re.search(r"Run ID: ([0-9a-f-]+)", output.getvalue()).group(1)
+        observed_run_ids = set()
+        for path, _, payload in received:
+            if path == "/v1/traces":
+                for resource in payload["resourceSpans"]:
+                    for span in resource["scopeSpans"][0]["spans"]:
+                        observed_run_ids.update(a["value"]["stringValue"] for a in span["attributes"] if a["key"] == "demo.run_id")
+            if path == "/v1/logs":
+                for log in payload["resourceLogs"][0]["scopeLogs"][0]["logRecords"]:
+                    observed_run_ids.update(a["value"]["stringValue"] for a in log["attributes"] if a["key"] == "demo.run_id")
+            if path == "/v1/metrics":
+                self.assertNotIn("demo.run_id", json.dumps(payload))
+        self.assertEqual(observed_run_ids, {run_id})
 
     def test_partial_success_is_failure_and_stops_further_sends(self):
         with receiver({"partialSuccess": {"rejectedSpans": "1"}}) as (endpoint, received), contextlib.redirect_stderr(io.StringIO()):
@@ -112,7 +147,7 @@ class ServingAssetTests(unittest.TestCase):
         self.assertEqual(len(views), 3)
         self.assertEqual({v[1] for v in views}, {"OTELLogs", "OTELTraces", "OTELMetrics"})
         for name, source, query in views:
-            self.assertNotRegex(query, r"TraceID|SpanID|ParentID|ago\(|now\(")
+            self.assertNotRegex(query, r"TraceID|SpanID|ParentID|demo\.run_id|ago\(|now\(")
             self.assertEqual(query.count("| summarize"), 1)
             self.assertTrue(query.rsplit("|", 1)[1].lstrip().startswith("summarize"))
             self.assertIn("policy retention softdelete = 30d", schema.split(f".alter materialized-view {name}")[1])

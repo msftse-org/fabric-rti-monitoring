@@ -85,7 +85,9 @@ class FabricClient:
                     return response.status, response.headers, json.loads(content) if content else {}
             except urllib.error.HTTPError as exc:
                 if exc.code == 429 and attempt < 4:
-                    self.sleep(delay_seconds(exc.headers))
+                    retry_delay = delay_seconds(exc.headers)
+                    exc.close()
+                    self.sleep(retry_delay)
                     continue
                 # Return structured codes, not server body text that could contain
                 # a token, payload, or other tenant-specific data.
@@ -93,6 +95,8 @@ class FabricClient:
                     error_code = json.loads(exc.read()).get("errorCode", "UnknownError")
                 except (ValueError, AttributeError):
                     error_code = "UnknownError"
+                finally:
+                    exc.close()
                 if not re.fullmatch(r"[A-Za-z0-9_.-]{1,120}", str(error_code)):
                     error_code = "UnknownError"
                 raise FabricError(f"Fabric HTTP {exc.code} ({error_code}); check tenant permissions, capacity state and API prerequisites.") from exc

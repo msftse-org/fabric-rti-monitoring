@@ -17,14 +17,17 @@ three signal types an instrumented workload would send.
 ## 2. Create a short burst of activity
 
 Start the job from the Azure portal or use the command in the deployment guide.
-It generates 60 synthetic requests over about a minute. Each request produces a
-root span, a child span, a correlated log, a duration gauge sample, and a delta
-counter point. Every fifth request simulates an error.
+It generates 60 synthetic requests over about a minute. One producer fabricates
+four service contexts: gateway, checkout, payment, and postgres. Each request
+produces a four-span chain, a root-correlated log, a duration gauge sample, and a
+delta counter point. Every fifth request simulates an error. These are logical
+service contexts within the generated telemetry, not four deployed applications.
 
-For one successful run into an otherwise empty database, expect **120 spans,
+For one successful run into an otherwise empty database, expect **240 spans,
 60 logs, 120 metric points, 60 root requests, and 12 request errors**. Ingestion may
 appear in stages. The job's success means OTLP was acknowledged; verify the rows
-in KQL before presenting a complete result.
+in KQL before presenting a complete result. Save the emitted Run ID to isolate
+that run's logs and traces. Run IDs stay out of metrics and summary dimensions.
 
 ## 3. Query the raw records
 
@@ -50,7 +53,8 @@ storage, and that actual query performance must be measured for the workload.
 In Grafana, select the recent time range. Walk through request counts, error
 counts, approximate latency percentiles, gauge statistics, and recent logs.
 Select a trace ID from the log table or paste it into the **Trace ID** field.
-The detail panel shows the root and its child span with their duration and status.
+The detail panel shows the root and its three descendants with their service,
+duration, parent relationships, run ID, and status.
 
 The dashboard provides a bounded span table. It is not a full trace waterfall UI
 or service map. Those are possible additions when introducing a workload.

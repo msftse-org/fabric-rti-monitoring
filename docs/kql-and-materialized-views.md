@@ -43,8 +43,8 @@ RequestsOverview(1h)
 
 ## Read the numbers correctly
 
-- Each synthetic request emits **two spans**, but `Requests1m` counts only the
-  `demo.request` root span. Summing all spans would double the request count.
+- Each synthetic request emits **four spans**, but `Requests1m` counts only the
+  `demo.request` root span. Summing all spans would quadruple the request count.
 - Error counts derive from span status or log severity. Error rate is errors
   divided by the corresponding request count, with a zero-denominator guard.
 - P50/P95 values are approximate estimates from the stored t-digest. Do not

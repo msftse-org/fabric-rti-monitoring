@@ -6,7 +6,7 @@ Grafana instance work together. Complete the cloud checks after deployment.
 
 ## Checked snapshot: 2026-11-01
 
-All 21 protocol/bootstrap/serving-asset tests passed, and Bicep v0.42.1 compiled
+All 22 protocol/bootstrap/serving-asset tests passed, and Bicep v0.42.1 compiled
 the templates and default parameters. The official, checksum-verified
 OpenTelemetry Collector Contrib v0.141.0 macOS ARM64 executable validated both
 configurations, including cloud configuration loaded through `env:OTEL_CONFIG`.
@@ -62,9 +62,9 @@ Use a dedicated demo deployment and record results privately. Follow the
 | Fabric bootstrap | Dedicated workspace is assigned to the intended active capacity; Eventhouse/database endpoints are returned; tables, policies, three views, and functions exist. |
 | Access | Collector identity is a database ingestor; Grafana identity has Viewer on the dedicated workspace; operators have the intended Grafana roles. |
 | Runtime | Collector revision is healthy and the manual job completes using the internal HTTPS endpoint. |
-| Ingestion | An isolated 60-request run yields 120 spans, 60 logs, and 120 metric points in Fabric. Check exporter/ingestion diagnostics if incomplete. |
+| Ingestion | An isolated 60-request run yields 240 spans, 60 logs, and 120 metric points in Fabric. Use Run ID for trace/log isolation and check diagnostics if incomplete. |
 | Rollups | Root request count is 60 and request errors are 12; views are enabled and healthy; detail and summary time windows agree. |
-| Correlation | A log's trace ID finds its root and child spans, with matching status and service attributes. |
+| Correlation | A log's trace ID finds the four-service span chain and matching Run ID, parent relationships, service attributes, and status. |
 | Visualization | Managed-identity data source passes Save & test; imported dashboard queries succeed; trace selection updates detail. |
 | Failure handling | A paused producer is visible as missing data; temporary export failure is detectable independently of successful OTLP acknowledgement. |
 | Cleanup | Dedicated Fabric items and Azure resources are handled separately; no recurring producer or unused billable demo resources remain. |

@@ -1,0 +1,18 @@
+flowchart LR
+  producer["One finite producer\nFour synthetic service contexts"]
+  collector["Collector\nAdditional Kafka/OTLP JSON profile required"]
+  broker["Azure Event Hubs\nProvided optional Bicep foundation"]
+  stream["Fabric Eventstream\nAdditional setup required"]
+  bronze[("Raw OTLP envelopes")]
+  policies["Transactional update policies"]
+  typed["Typed logs, traces, metrics, exemplars"]
+  dedup["Deduplicated detail + materialized summaries"]
+  dashboards["Grafana / native Fabric RTI dashboard"]
+  producer -->|"OTLP"| collector
+  collector -->|"Kafka / TLS + Entra"| broker
+  broker -->|"Fabric consumer group"| stream --> bronze
+  bronze --> policies --> typed --> dedup
+  dedup -->|"KQL"| dashboards
+  typed -->|"Detailed KQL"| dashboards
+  sender["Collector identity\nEvent Hubs Data Sender"] -.-> broker
+  receiver["Fabric workspace identity\nEvent Hubs Data Receiver"] -.-> broker

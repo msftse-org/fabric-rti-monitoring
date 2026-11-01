@@ -309,7 +309,7 @@
     {
       "id": 6,
       "title": "Recent correlated logs",
-      "description": "Select a trace ID to inspect its two spans below. Limited to the newest 100 rows.",
+      "description": "Select a trace ID to inspect its four spans across gateway, checkout, payment and postgres. RunId identifies one synthetic job execution. Limited to the newest 100 rows.",
       "type": "table",
       "datasource": {
         "type": "grafana-azure-data-explorer-datasource",
@@ -329,7 +329,7 @@
             "uid": "${DS_FABRIC}"
           },
           "database": "$database",
-          "query": "OTELLogs\n| where $__timeFilter(Timestamp)\n| project Timestamp, SeverityText, Body, TraceID, SpanID\n| order by Timestamp desc\n| take 100",
+          "query": "OTELLogs\n| where $__timeFilter(Timestamp)\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), RunId=tostring(LogsAttributes[\"demo.run_id\"])\n| project Timestamp, Service, RunId, SeverityText, Body, TraceID, SpanID\n| order by Timestamp desc\n| take 100",
           "querySource": "raw",
           "queryType": "KQL",
           "rawMode": true,
@@ -367,7 +367,7 @@
     {
       "id": 7,
       "title": "Trace detail",
-      "description": "Enter a trace ID or select one from recent logs. ParentID reconstructs the request and storage span relationship.",
+      "description": "One synthetic producer models four service resources. ParentID follows gateway -> checkout -> payment -> postgres. These are generated spans, without four running applications.",
       "type": "table",
       "datasource": {
         "type": "grafana-azure-data-explorer-datasource",
@@ -387,7 +387,7 @@
             "uid": "${DS_FABRIC}"
           },
           "database": "$database",
-          "query": "let selected_trace = ${trace_id:singlequote};\nOTELTraces\n| where $__timeFilter(StartTime)\n| where isnotempty(selected_trace) and TraceID == selected_trace\n| project StartTime, DurationMs=(EndTime-StartTime)/1ms, SpanName, SpanID, ParentID, SpanStatus\n| order by StartTime asc\n| take 100",
+          "query": "let selected_trace = ${trace_id:singlequote};\nOTELTraces\n| where $__timeFilter(StartTime)\n| where isnotempty(selected_trace) and TraceID == selected_trace\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), RunId=tostring(TraceAttributes[\"demo.run_id\"])\n| project StartTime, Service, RunId, DurationMs=(EndTime-StartTime)/1ms, SpanName, SpanID, ParentID, SpanStatus\n| order by StartTime asc\n| take 100",
           "querySource": "raw",
           "queryType": "KQL",
           "rawMode": true,

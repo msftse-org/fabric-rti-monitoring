@@ -11,9 +11,9 @@ application exists.
 
 | Capability | What the sample shows |
 | --- | --- |
-| Open instrumentation | OTLP/HTTP logs, spans, and gauge measurements from a small synthetic producer. |
+| Open instrumentation | One producer emits OTLP logs, metrics, and traces across four synthetic service contexts. |
 | Managed ingestion | A collector on Azure Container Apps uses managed identity to write to a Fabric KQL database. |
-| Correlated investigation | A log and its span share a trace ID; metrics use bounded dimensions. |
+| Correlated investigation | Run, trace, and span IDs connect detailed records; metrics use bounded dimensions. |
 | Incremental aggregation | Three materialized views maintain minute-level log, request, and metric summaries. |
 | Reusable query contracts | KQL functions serve the overview; raw tables support detailed investigation. |
 | Visualization | A Grafana dashboard brings summaries, logs, and trace details into one view. |
@@ -42,6 +42,8 @@ signal, a simulated error, the materialized summaries, and a correlated trace.
   acceptance checklist.
 - [Extending the sample](docs/extending.md) - how to introduce your own workloads
   and decide which additional capabilities to add.
+- [Buffered ingestion option](docs/buffered-architecture.md) - Event Hubs Bicep
+  foundation and a separate Eventstream, raw-data, deduplication, and exemplar design.
 
 ## Repository map
 

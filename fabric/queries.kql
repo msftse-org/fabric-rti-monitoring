@@ -21,14 +21,16 @@ MetricDurationOverview(1h)
 OTELLogs
 | where Timestamp > ago(1h)
 | join kind=inner (OTELTraces | where StartTime > ago(1h) | project TraceID, SpanID, SpanName, StartTime, EndTime) on TraceID, SpanID
-| project Timestamp, SeverityText, Body, TraceID, SpanID, SpanName, DurationMs=(EndTime-StartTime)/1ms
+| extend Service=tostring(ResourceAttributes["service.name"]), RunId=tostring(LogsAttributes["demo.run_id"])
+| project Timestamp, Service, RunId, SeverityText, Body, TraceID, SpanID, SpanName, DurationMs=(EndTime-StartTime)/1ms
 | order by Timestamp desc
 
 // 5. Waterfall detail: replace the value with a TraceID from query 4.
 let trace_id = "REPLACE_WITH_TRACE_ID";
 OTELTraces
 | where StartTime > ago(1h) and TraceID == trace_id
-| project StartTime, EndTime, DurationMs=(EndTime-StartTime)/1ms, SpanName, SpanID, ParentID, SpanStatus
+| extend Service=tostring(ResourceAttributes["service.name"]), RunId=tostring(TraceAttributes["demo.run_id"])
+| project StartTime, EndTime, Service, RunId, DurationMs=(EndTime-StartTime)/1ms, SpanName, SpanID, ParentID, SpanStatus
 | order by StartTime asc
 
 // 6. Arrival delay. This includes collector batching and backend ingestion.
@@ -43,3 +45,13 @@ LogsOverview(1h)
 
 // 8. Show background materialization health (management command).
 .show materialized-views
+
+// 9. Isolate one job execution using the Run ID printed by the emitter.
+// Each of the four service resources has 60 spans for a default cloud run.
+// Only gateway spans contribute to the root request and error counts.
+let run_id = "REPLACE_WITH_RUN_ID";
+OTELTraces
+| where StartTime > ago(1h) and tostring(TraceAttributes["demo.run_id"]) == run_id
+| extend Service=tostring(ResourceAttributes["service.name"])
+| summarize Spans=count(), Traces=dcount(TraceID), RootRequests=countif(SpanName == "demo.request"), RootErrors=countif(SpanName == "demo.request" and SpanStatus == "STATUS_CODE_ERROR") by Service
+| order by Service asc

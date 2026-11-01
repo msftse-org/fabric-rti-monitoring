@@ -127,10 +127,12 @@ class BootstrapTests(unittest.TestCase):
             client.list_all("/workspaces")
 
     def test_throttled_request_retries(self):
-        error = urllib.error.HTTPError(bootstrap.API_ROOT + "/workspaces", 429, "Rate limited", {"Retry-After": "1"}, io.BytesIO(b'{}'))
+        body = io.BytesIO(b'{}')
+        error = urllib.error.HTTPError(bootstrap.API_ROOT + "/workspaces", 429, "Rate limited", {"Retry-After": "1"}, body)
         client, opener = self.client([error, Response(200, {"value": []})])
         self.assertEqual(client.list_all("/workspaces"), [])
         self.assertEqual(len(opener.requests), 2)
+        self.assertTrue(body.closed)
 
     def test_existing_resources_are_reused_without_mutations(self):
         client = ExistingClient()

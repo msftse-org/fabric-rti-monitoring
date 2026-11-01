@@ -11,7 +11,7 @@ Grafana.
 
 | Component | Responsibility |
 | --- | --- |
-| Synthetic Container Apps job | Manually produces a finite sequence of related logs, spans, and gauge samples. It has no access to Fabric. |
+| Synthetic Container Apps job | One producer fabricates four correlated service contexts and related logs/metrics. It has no access to Fabric. |
 | Container Apps collector | Receives OTLP on port 4318 behind an environment-internal ingress, filters demo signals, transforms attributes, batches records, and exports them. |
 | Collector user-assigned managed identity | Authenticates to Fabric as a database ingestor. No client secret is supplied to the cloud collector. |
 | Fabric capacity | Supplies compute for the workspace. Reuse an eligible active capacity or explicitly create one. |
@@ -30,8 +30,10 @@ receiver inside the environment.
 
 ![Telemetry data flow from a finite producer through raw tables, incremental summaries and KQL into a dashboard.](assets/data-flow.png)
 
-1. The job creates a synthetic request, records a span, a related log, and a
-   duration gauge sample. Selected requests simulate failures.
+1. The job creates a synthetic request across gateway, checkout, payment, and
+   postgres contexts. It records four related spans, a log, and metric samples.
+   Selected requests simulate failures. A run ID identifies the batch in trace/log
+   detail and is excluded from metric dimensions.
 2. The collector accepts only the demo signal contract. Resource and record
    attributes are restricted, log bodies are replaced, span events are dropped,
    and batches limit export overhead. These are sample controls for synthetic
@@ -69,6 +71,11 @@ high availability, and private network integration as deliberate extensions.
 An observability outage should not control application authorization or
 transactional state. When adding a workload, preserve that separation and define
 the acceptable telemetry loss and recovery behavior.
+
+For a retained broker handoff, see the separate
+[Event Hubs and Eventstream option](buffered-architecture.md). Its Bicep broker
+foundation is available; the complete buffered ingestion and projection profile
+requires additional implementation. The primary deployment stays direct.
 
 See the [editable Mermaid sources](diagrams/) and the
 [Microsoft Fabric Eventhouse overview](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/eventhouse).

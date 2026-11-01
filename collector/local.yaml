@@ -22,7 +22,7 @@ processors:
     traces:
       span:
         - 'resource.attributes["demo.synthetic"] != true'
-        - 'name != "demo.request" and name != "demo.storage.read"'
+        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.payment" and name != "demo.postgres.query"'
       spanevent:
         - 'true'
     logs:
@@ -40,13 +40,13 @@ processors:
       - context: span
         statements:
           - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
-          - keep_keys(attributes, ["demo.scenario", "outcome"])
+          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id"])
           - set(status.message, "")
     log_statements:
       - context: log
         statements:
           - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
-          - keep_keys(attributes, ["demo.scenario", "outcome"])
+          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id"])
           - set(body, "Synthetic request completed")
     metric_statements:
       - context: datapoint

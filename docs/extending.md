@@ -27,6 +27,7 @@ producer after proving the complete ingestion and query path in your tenant.
 | Need | Potential next step |
 | --- | --- |
 | Existing Azure resource diagnostics | Evaluate Event Hubs/Eventstream or other supported connectors separately from the OTLP path. |
+| Buffered telemetry handoff | Use the [buffered architecture guide](buffered-architecture.md) and optional Event Hubs Bicep foundation; complete the additional Kafka/Eventstream/projection profile separately. |
 | Higher-volume recurring queries | Measure materialized-view cardinality and cost; choose appropriate partitioning, cache, and retention. |
 | Alerting | Add freshness/error/latency rules, explicit no-data and query-error behavior, contact points, and delivery tests. |
 | Detailed trace visualization | Add a trace waterfall or service-dependency view while preserving trace correlation. |

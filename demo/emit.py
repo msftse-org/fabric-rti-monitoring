@@ -10,6 +10,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 
 def attribute(key, value):
@@ -17,41 +18,54 @@ def attribute(key, value):
     return {"key": key, "value": {value_type: value}}
 
 
-def make_payloads(index, now_ns=None):
-    """One request: two parent/child spans, a correlated log, and two metrics."""
+def make_payloads(index, now_ns=None, run_id=None):
+    """One synthetic request across four service resources, plus a log and metrics."""
     end = now_ns if now_ns is not None else time.time_ns()
     duration_ms = 40 + (index % 8) * 25
     start = end - duration_ms * 1_000_000
     failed = index % 5 == 4
     outcome = "error" if failed else "success"
-    trace_id, root_id, child_id = secrets.token_hex(16), secrets.token_hex(8), secrets.token_hex(8)
-    resource = {"attributes": [
-        attribute("service.name", "synthetic-checkout"),
-        attribute("service.version", "1.0.0"),
-        attribute("deployment.environment.name", "demo"),
-        attribute("demo.synthetic", True),
-    ]}
+    trace_id = secrets.token_hex(16)
+    run_id = str(uuid.uuid4()) if run_id is None else run_id
     scope = {"name": "fabric-rti-monitoring-demo", "version": "1.0.0"}
     dimensions = [attribute("demo.scenario", "checkout"), attribute("outcome", outcome)]
-    root = {
-        "traceId": trace_id, "spanId": root_id, "name": "demo.request", "kind": 2,
-        "startTimeUnixNano": str(start), "endTimeUnixNano": str(end),
-        "attributes": copy.deepcopy(dimensions), "status": {"code": 2 if failed else 1},
-    }
-    child = {
-        "traceId": trace_id, "spanId": child_id, "parentSpanId": root_id,
-        "name": "demo.storage.read", "kind": 3,
-        "startTimeUnixNano": str(start + 5_000_000),
-        "endTimeUnixNano": str(end - 5_000_000),
-        "attributes": copy.deepcopy(dimensions), "status": {"code": 2 if failed else 1},
-    }
+    # Run IDs support detail queries only. They never become metric dimensions.
+    detail_attributes = dimensions + [attribute("demo.run_id", run_id)]
+    resource_spans = []
+    parent_id = None
+    for depth, (service, span_name) in enumerate((
+        ("gateway", "demo.request"),
+        ("checkout", "demo.checkout"),
+        ("payment", "demo.payment"),
+        ("postgres", "demo.postgres.query"),
+    )):
+        resource = {"attributes": [
+            attribute("service.name", service),
+            attribute("service.version", "1.0.0"),
+            attribute("deployment.environment.name", "demo"),
+            attribute("demo.synthetic", True),
+        ]}
+        span_id = secrets.token_hex(8)
+        span = {
+            "traceId": trace_id, "spanId": span_id, "name": span_name, "kind": 2,
+            "startTimeUnixNano": str(start + depth * 5_000_000),
+            "endTimeUnixNano": str(end - depth * 5_000_000),
+            "attributes": copy.deepcopy(detail_attributes), "status": {"code": 2 if failed else 1},
+        }
+        if parent_id is not None:
+            span["parentSpanId"] = parent_id
+        resource_spans.append({"resource": resource,
+                               "scopeSpans": [{"scope": copy.deepcopy(scope), "spans": [span]}]})
+        parent_id = span_id
+    root = resource_spans[0]["scopeSpans"][0]["spans"][0]
+    gateway_resource = resource_spans[0]["resource"]
     log = {
         "timeUnixNano": str(end), "observedTimeUnixNano": str(end),
-        "traceId": trace_id, "spanId": root_id,
+        "traceId": trace_id, "spanId": root["spanId"],
         "severityNumber": 17 if failed else 9,
         "severityText": "ERROR" if failed else "INFO",
         "body": {"stringValue": "Synthetic request completed"},
-        "attributes": copy.deepcopy(dimensions),
+        "attributes": copy.deepcopy(detail_attributes),
     }
     point = {"timeUnixNano": str(end), "attributes": copy.deepcopy(dimensions)}
     metrics = [
@@ -62,11 +76,10 @@ def make_payloads(index, now_ns=None):
                  "dataPoints": [{**copy.deepcopy(point), "startTimeUnixNano": str(start), "asInt": "1"}]}},
     ]
     return {
-        "traces": {"resourceSpans": [{"resource": copy.deepcopy(resource),
-                    "scopeSpans": [{"scope": copy.deepcopy(scope), "spans": [root, child]}]}]},
-        "logs": {"resourceLogs": [{"resource": copy.deepcopy(resource),
+        "traces": {"resourceSpans": resource_spans},
+        "logs": {"resourceLogs": [{"resource": copy.deepcopy(gateway_resource),
                   "scopeLogs": [{"scope": copy.deepcopy(scope), "logRecords": [log]}]}]},
-        "metrics": {"resourceMetrics": [{"resource": copy.deepcopy(resource),
+        "metrics": {"resourceMetrics": [{"resource": copy.deepcopy(gateway_resource),
                      "scopeMetrics": [{"scope": copy.deepcopy(scope), "metrics": metrics}]}]},
     }
 
@@ -114,16 +127,18 @@ def main(argv=None):
         parser.error("--interval must be between 0 and 60")
     try:
         endpoint = validate_endpoint(args.endpoint)
+        run_id = str(uuid.uuid4())
         if args.dry_run:
-            print(json.dumps(make_payloads(0), indent=2))
+            print(json.dumps(make_payloads(0, run_id=run_id), indent=2))
             return 0
         for index in range(args.count):
-            for signal, payload in make_payloads(index).items():
+            for signal, payload in make_payloads(index, run_id=run_id).items():
                 send(endpoint, signal, payload)
             if index + 1 < args.count:
                 time.sleep(args.interval)
-        print(f"Collector acknowledged {args.count * 2} spans, {args.count} logs, "
+        print(f"Collector acknowledged {args.count * 4} spans, {args.count} logs, "
               f"and {args.count * 2} metric points. Verify ingestion separately in KQL.")
+        print(f"Run ID: {run_id}")
         return 0
     except (ValueError, urllib.error.URLError, RuntimeError) as error:
         # Avoid printing URL errors, which can contain proxy or endpoint details.

@@ -274,11 +274,14 @@ az containerapp job execution list \
 ```
 
 A run emits 60 synthetic requests at one-second intervals and exits. Each request
-contains two parent/child spans, one correlated log and two metric points. Every
-fifth request fails deliberately. The job has no automatic retry, a five-minute
-timeout and no recurring schedule. Inspect the execution's status and container
-output in the Azure portal. The expected final message acknowledges **120 spans,
-60 logs and 120 metric points** accepted by the collector.
+contains four spans across the logical `gateway`, `checkout`, `payment` and
+`postgres` services, one correlated gateway log and two gateway metric points.
+One job emits all four synthetic service resources. Every fifth request fails
+deliberately. The job has no automatic retry, a five-minute timeout and no
+recurring schedule. Inspect the execution's status and container output in the
+Azure portal. The expected final message acknowledges **240 spans, 60 logs and
+120 metric points** accepted by the collector, followed by a **Run ID**. Save that
+Run ID to isolate this execution in detail queries.
 
 Collector acknowledgement and a successful job are separate from Fabric
 ingestion. Wait for rows to appear in the database before presenting a populated
@@ -288,9 +291,25 @@ dashboard. See [Container Apps job execution commands](https://learn.microsoft.c
 
 In the Fabric query editor, run the queries in
 [`fabric/queries.kql`](../fabric/queries.kql) individually. For a fresh database
-after one successful execution, the signal-count query should find 120 trace
+after one successful execution, the signal-count query should find 240 trace
 rows, 60 log rows and 120 metric rows in the last hour. Repeated executions add
-rows, so compare an isolated time window or before/after counts.
+rows. Run the execution-isolation query from `fabric/queries.kql`, replacing its
+placeholder with the Run ID from the job output. It should find 60 spans for each
+of the four services, 60 root requests at `gateway`, and 12 root errors. The three
+other services each contribute one child span per request.
+
+For an exact per-run log count, use the same detail attribute:
+
+```kusto
+let run_id = "REPLACE_WITH_RUN_ID";
+OTELLogs
+| where Timestamp > ago(1h) and tostring(LogsAttributes["demo.run_id"]) == run_id
+| summarize Logs=count(), Errors=countif(SeverityNumber >= 17)
+```
+
+Expected: `Logs = 60`, `Errors = 12`. Metrics deliberately omit Run ID from their
+dimensions; inspect them within the run's time window and avoid overlapping test
+executions when comparing their exact counts.
 
 Check the root request rollup:
 
@@ -300,7 +319,8 @@ RequestsOverview(1h)
 ```
 
 Expected after one run: `Requests = 60`, `Errors = 12`. Child spans do not count as
-additional requests. Check view health separately:
+additional requests. The aggregate views also omit Run ID, so this rollup includes
+every run in the selected window. Check view health separately:
 
 ```kusto
 .show materialized-views

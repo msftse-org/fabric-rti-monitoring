@@ -12,7 +12,7 @@ jobs:
   contracts-and-bicep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Test protocol and Fabric bootstrap behavior
         run: python3 -m unittest discover -s tests -v
       - name: Validate public assets and documentation
@@ -22,13 +22,14 @@ jobs:
           az bicep install --version v0.42.1
           az bicep build --file infra/main.bicep --outfile /tmp/fabric-rti.json
           az bicep build-params --file infra/main.bicepparam --outfile /tmp/fabric-rti.parameters.json
+          az bicep build --file infra/optional/event-hubs.bicep --outfile /tmp/fabric-rti.event-hubs.json
 
   collector-runtime:
     runs-on: ubuntu-latest
     env:
       COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.141.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Pull pinned collector
         run: docker pull "$COLLECTOR_IMAGE"
       - name: Validate both collector configurations
