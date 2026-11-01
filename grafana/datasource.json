@@ -1,0 +1,20 @@
+{
+  "name": "Fabric Eventhouse",
+  "uid": "fabric-eventhouse",
+  "type": "grafana-azure-data-explorer-datasource",
+  "access": "proxy",
+  "basicAuth": false,
+  "isDefault": false,
+  "editable": true,
+  "jsonData": {
+    "azureCredentials": {
+      "authType": "msi"
+    },
+    "clusterUrl": "__KUSTO_CLUSTER_URI__",
+    "defaultDatabase": "Observability",
+    "defaultEditorMode": "raw",
+    "dataConsistency": "strongconsistency",
+    "dynamicCaching": false,
+    "queryTimeout": "60s"
+  }
+}

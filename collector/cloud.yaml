@@ -1,0 +1,100 @@
+# Demo-only receiver behind Container Apps internal ingress.
+# The Bicep deployment exposes HTTPS only inside the same environment.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 192
+    spike_limit_mib: 48
+  # A demo selector, not an authentication or data-loss-prevention boundary.
+  filter/synthetic:
+    error_mode: propagate
+    traces:
+      span:
+        - 'resource.attributes["demo.synthetic"] != true'
+        - 'name != "demo.request" and name != "demo.storage.read"'
+      spanevent:
+        - 'true'
+    logs:
+      log_record:
+        - 'resource.attributes["demo.synthetic"] != true'
+    metrics:
+      metric:
+        - 'resource.attributes["demo.synthetic"] != true'
+        - 'name != "demo.request.duration" and name != "demo.requests"'
+  # Keep a small teaching contract. Review a workload-specific privacy policy
+  # before adding real producers. Attribute VALUES are not automatically safe.
+  transform/demo:
+    error_mode: propagate
+    trace_statements:
+      - context: span
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+          - set(status.message, "")
+    log_statements:
+      - context: log
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+          - set(body, "Synthetic request completed")
+    metric_statements:
+      - context: datapoint
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+  batch:
+    timeout: 1s
+    send_batch_size: 128
+    send_batch_max_size: 256
+
+exporters:
+  # This is the database QUERY URI. The SDK discovers ingestion endpoints.
+  # Cloud baseline: no client secret. Attach the Bicep-managed collector identity.
+  azuredataexplorer:
+    cluster_uri: ${env:KUSTO_CLUSTER_URI}
+    db_name: ${env:KUSTO_DATABASE}
+    # Select the Bicep-managed user-assigned identity by its CLIENT ID.
+    managed_identity_id: ${env:AZURE_CLIENT_ID}
+    logs_table_name: OTELLogs
+    traces_table_name: OTELTraces
+    metrics_table_name: OTELMetrics
+    ingestion_type: managed
+    timeout: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 2
+      queue_size: 128
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 15s
+      max_elapsed_time: 2m
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, transform/demo, batch]
+      exporters: [azuredataexplorer]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, transform/demo, batch]
+      exporters: [azuredataexplorer]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, transform/demo, batch]
+      exporters: [azuredataexplorer]

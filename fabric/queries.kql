@@ -1,0 +1,45 @@
+// Select and run one query at a time in the KQL database query editor.
+
+// 1. Did all three signals arrive? A send acknowledgement is not this proof.
+union
+    (OTELLogs | where Timestamp > ago(1h) | summarize Rows=count(), Latest=max(Timestamp) | extend Signal="logs"),
+    (OTELTraces | where StartTime > ago(1h) | summarize Rows=count(), Latest=max(StartTime) | extend Signal="traces"),
+    (OTELMetrics | where Timestamp > ago(1h) | summarize Rows=count(), Latest=max(Timestamp) | extend Signal="metrics")
+| project Signal, Rows, Latest
+
+// 2. Root-span latency and errors from the Requests1m materialized view.
+// Child spans are excluded from request counts. Percentiles are approximate.
+RequestsOverview(1h)
+| order by WindowStart asc
+
+// 3. Scalar duration gauge. Histograms use a different exporter representation;
+// this starter deliberately uses a gauge so the first metric is easy to inspect.
+MetricDurationOverview(1h)
+| order by WindowStart asc
+
+// 4. Correlate a log with its span using the same TraceID and SpanID.
+OTELLogs
+| where Timestamp > ago(1h)
+| join kind=inner (OTELTraces | where StartTime > ago(1h) | project TraceID, SpanID, SpanName, StartTime, EndTime) on TraceID, SpanID
+| project Timestamp, SeverityText, Body, TraceID, SpanID, SpanName, DurationMs=(EndTime-StartTime)/1ms
+| order by Timestamp desc
+
+// 5. Waterfall detail: replace the value with a TraceID from query 4.
+let trace_id = "REPLACE_WITH_TRACE_ID";
+OTELTraces
+| where StartTime > ago(1h) and TraceID == trace_id
+| project StartTime, EndTime, DurationMs=(EndTime-StartTime)/1ms, SpanName, SpanID, ParentID, SpanStatus
+| order by StartTime asc
+
+// 6. Arrival delay. This includes collector batching and backend ingestion.
+OTELLogs
+| where Timestamp > ago(1h)
+| extend DelaySeconds=(ingestion_time()-Timestamp)/1s
+| summarize P50Seconds=percentile(DelaySeconds, 50), P95Seconds=percentile(DelaySeconds, 95)
+
+// 7. Logs count and error summary from Logs1m through its serving function.
+LogsOverview(1h)
+| order by WindowStart asc
+
+// 8. Show background materialization health (management command).
+.show materialized-views

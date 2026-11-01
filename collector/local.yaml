@@ -1,0 +1,82 @@
+# Demo-only receiver. Docker publishes these ports on loopback only.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 192
+    spike_limit_mib: 48
+  # A demo selector, not an authentication or data-loss-prevention boundary.
+  filter/synthetic:
+    error_mode: propagate
+    traces:
+      span:
+        - 'resource.attributes["demo.synthetic"] != true'
+        - 'name != "demo.request" and name != "demo.storage.read"'
+      spanevent:
+        - 'true'
+    logs:
+      log_record:
+        - 'resource.attributes["demo.synthetic"] != true'
+    metrics:
+      metric:
+        - 'resource.attributes["demo.synthetic"] != true'
+        - 'name != "demo.request.duration" and name != "demo.requests"'
+  # Keep a small teaching contract. Review a workload-specific privacy policy
+  # before adding real producers. Attribute VALUES are not automatically safe.
+  transform/demo:
+    error_mode: propagate
+    trace_statements:
+      - context: span
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+          - set(status.message, "")
+    log_statements:
+      - context: log
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+          - set(body, "Synthetic request completed")
+    metric_statements:
+      - context: datapoint
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+  batch:
+    timeout: 1s
+    send_batch_size: 128
+    send_batch_max_size: 256
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, transform/demo, batch]
+      exporters: [debug]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, transform/demo, batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, transform/demo, batch]
+      exporters: [debug]

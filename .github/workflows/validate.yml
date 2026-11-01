@@ -1,0 +1,45 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts-and-bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test protocol and Fabric bootstrap behavior
+        run: python3 -m unittest discover -s tests -v
+      - name: Validate public assets and documentation
+        run: python3 scripts/validate_repository.py
+      - name: Compile Bicep and safe parameters
+        run: |
+          az bicep install --version v0.42.1
+          az bicep build --file infra/main.bicep --outfile /tmp/fabric-rti.json
+          az bicep build-params --file infra/main.bicepparam --outfile /tmp/fabric-rti.parameters.json
+
+  collector-runtime:
+    runs-on: ubuntu-latest
+    env:
+      COLLECTOR_IMAGE: otel/opentelemetry-collector-contrib:0.141.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull pinned collector
+        run: docker pull "$COLLECTOR_IMAGE"
+      - name: Validate both collector configurations
+        run: |
+          for config in local cloud; do
+            docker run --rm \
+              --env KUSTO_CLUSTER_URI=https://example.kusto.fabric.microsoft.com \
+              --env KUSTO_DATABASE=Observability \
+              --env AZURE_CLIENT_ID=00000000-0000-0000-0000-000000000002 \
+              --volume "$PWD/collector:/etc/otelcol:ro" \
+              "$COLLECTOR_IMAGE" validate --config="/etc/otelcol/$config.yaml"
+          done
+      - name: Run cloud processors with a local debug sink
+        run: python3 scripts/smoke_collector.py

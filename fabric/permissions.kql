@@ -1,0 +1,19 @@
+// Teaching template: replace every placeholder before running commands.
+// Run one command at a time in the Observability database as its administrator.
+// COLLECTOR_CLIENT_ID is the Bicep collectorIdentityClientId output: application
+// client ID, NOT collectorIdentityPrincipalId (the service principal object ID).
+// TENANT_ID is the Bicep tenantId output. Both values are UUIDs, not secrets.
+// If using a different database name, change Observability consistently.
+
+// Inspect existing access before adding a grant.
+.show database Observability principals
+
+// Give the cloud collector ingestion access without query or schema permissions.
+.add database Observability ingestors ('aadapp=<COLLECTOR_CLIENT_ID>;<TENANT_ID>')
+
+// Verify that the application appears as an ingestor.
+.show database Observability principals
+
+// Grafana's separate system-assigned identity receives Viewer on the dedicated
+// Fabric workspace through bootstrap-fabric.py --grafana-principal-id. That
+// option accepts Grafana's principal OBJECT ID. It is not this collector grant.

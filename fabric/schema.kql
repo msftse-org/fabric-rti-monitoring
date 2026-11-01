@@ -1,0 +1,93 @@
+// Run management commands against the Observability database, not a query tab
+// connected to another database. Bootstrap submits the full database definition.
+// Column contract: OpenTelemetry Collector Contrib azuredataexplorer exporter
+// v0.141.0 (Apache-2.0). See THIRD_PARTY_NOTICES.md and upstream README:
+// https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.141.0/exporter/azuredataexplorerexporter
+
+.create-merge table OTELLogs (Timestamp:datetime, ObservedTimestamp:datetime, TraceID:string, SpanID:string, SeverityText:string, SeverityNumber:int, Body:string, ResourceAttributes:dynamic, LogsAttributes:dynamic)
+
+.create-merge table OTELMetrics (Timestamp:datetime, MetricName:string, MetricType:string, MetricUnit:string, MetricDescription:string, MetricValue:real, Host:string, ResourceAttributes:dynamic, MetricAttributes:dynamic)
+
+.create-merge table OTELTraces (TraceID:string, SpanID:string, ParentID:string, SpanName:string, SpanStatus:string, SpanKind:string, StartTime:datetime, EndTime:datetime, ResourceAttributes:dynamic, TraceAttributes:dynamic, Events:dynamic, Links:dynamic, SpanStatusMessage:string)
+
+// Managed streaming is appropriate for this small, low-latency demo.
+.alter table OTELLogs policy streamingingestion enable
+
+.alter table OTELMetrics policy streamingingestion enable
+
+.alter table OTELTraces policy streamingingestion enable
+
+// Keep the demo bounded. Choose retention and hot-cache policies per workload.
+.alter-merge table OTELLogs policy retention softdelete = 7d
+
+.alter-merge table OTELMetrics policy retention softdelete = 7d
+
+.alter-merge table OTELTraces policy retention softdelete = 7d
+
+.alter table OTELLogs policy caching hot = 1d
+
+.alter table OTELMetrics policy caching hot = 1d
+
+.alter table OTELTraces policy caching hot = 1d
+
+.alter table OTELLogs policy ingestiontime true
+
+.alter table OTELMetrics policy ingestiontime true
+
+.alter table OTELTraces policy ingestiontime true
+
+// Materialized views aggregate as data arrives. Querying the view name includes
+// the unmaterialized delta, unlike materialized_view(), which can be stale.
+// Create these before running the demo: backfill=false skips existing rows.
+.create-or-alter materialized-view Logs1m on table OTELLogs {
+    OTELLogs
+    | where ResourceAttributes["demo.synthetic"] == true
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"])
+    | summarize LogCount=count(), ErrorCount=countif(SeverityNumber >= 17) by WindowStart=bin(Timestamp, 1m), Service, Environment
+}
+
+.create-or-alter materialized-view Requests1m on table OTELTraces {
+    OTELTraces
+    | where ResourceAttributes["demo.synthetic"] == true and SpanName == "demo.request"
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"]), DurationMs=(EndTime-StartTime)/1ms
+    | summarize RequestCount=count(), ErrorCount=countif(SpanStatus == "STATUS_CODE_ERROR"), DurationSumMs=sum(DurationMs), DurationDigest=tdigest(DurationMs) by WindowStart=bin(StartTime, 1m), Service, Environment
+}
+
+.create-or-alter materialized-view Metrics1m on table OTELMetrics {
+    OTELMetrics
+    | where ResourceAttributes["demo.synthetic"] == true
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"])
+    | summarize SampleCount=count(), ValueSum=sum(MetricValue), ValueMin=min(MetricValue), ValueMax=max(MetricValue) by WindowStart=bin(Timestamp, 1m), Service, Environment, MetricName, MetricType, MetricUnit
+}
+
+// Rollups retain aggregate history after seven-day raw detail expires.
+.alter materialized-view Logs1m policy retention softdelete = 30d
+
+.alter materialized-view Requests1m policy retention softdelete = 30d
+
+.alter materialized-view Metrics1m policy retention softdelete = 30d
+
+.alter materialized-view Logs1m policy caching hot = 1d
+
+.alter materialized-view Requests1m policy caching hot = 1d
+
+.alter materialized-view Metrics1m policy caching hot = 1d
+
+.create-or-alter function with (folder='Observability', docstring='One-minute log counts from the Logs1m materialized view') LogsOverview(lookback:timespan=24h) {
+    Logs1m
+    | where WindowStart > ago(lookback)
+    | project WindowStart, Service, Environment, LogCount, ErrorCount
+}
+
+.create-or-alter function with (folder='Observability', docstring='Root request latency and errors from Requests1m; percentiles are approximate') RequestsOverview(lookback:timespan=24h) {
+    Requests1m
+    | where WindowStart > ago(lookback)
+    | extend Percentiles=percentiles_array_tdigest(DurationDigest, dynamic([50,95]))
+    | project WindowStart, Service, Environment, RequestCount, ErrorCount, AverageMs=DurationSumMs/RequestCount, P50Ms=todouble(Percentiles[0]), P95Ms=todouble(Percentiles[1])
+}
+
+.create-or-alter function with (folder='Observability', docstring='Duration gauge sample statistics from Metrics1m; not a request rate') MetricDurationOverview(lookback:timespan=24h) {
+    Metrics1m
+    | where WindowStart > ago(lookback) and MetricName == 'demo.request.duration' and MetricType == 'Gauge'
+    | project WindowStart, Service, Environment, SampleCount, AverageMs=ValueSum/SampleCount, MinimumMs=ValueMin, MaximumMs=ValueMax
+}

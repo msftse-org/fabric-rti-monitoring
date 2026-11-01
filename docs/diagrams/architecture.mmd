@@ -1,0 +1,19 @@
+flowchart LR
+  subgraph aca["Azure Container Apps environment"]
+    job["Manual synthetic telemetry job"]
+    collector["OpenTelemetry Collector\nInternal HTTPS ingress → OTLP/HTTP 4318"]
+    identity["User-assigned managed identity\nDatabase ingestor"]
+    job -->|"OTLP logs, spans, metrics"| collector
+    identity -.-> collector
+  end
+  subgraph fabric["Microsoft Fabric workspace on active capacity"]
+    raw[("Eventhouse / KQL database\nOTELLogs · OTELTraces · OTELMetrics")]
+    mv["Materialized views\nLogs1m · Requests1m · Metrics1m"]
+    functions["KQL serving functions"]
+    raw --> mv --> functions
+  end
+  collector -->|"Azure Data Explorer exporter\nManaged streaming + queued fallback"| raw
+  grafana["Azure Managed Grafana\nSystem-assigned identity · Viewer"]
+  functions -->|"KQL results"| grafana
+  raw -->|"Raw detail queries"| grafana
+  collector -.->|"Platform diagnostics"| la["Log Analytics"]

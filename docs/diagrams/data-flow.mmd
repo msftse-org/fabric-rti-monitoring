@@ -1,0 +1,17 @@
+sequenceDiagram
+  participant Job as Synthetic job
+  participant OTel as Collector
+  participant Raw as Eventhouse raw tables
+  participant MV as Materialized views
+  participant KQL as KQL functions
+  participant G as Grafana
+  Job->>OTel: OTLP/HTTP JSON: 2 spans, 1 log, 2 metric points
+  OTel-->>Job: OTLP acknowledgement (not ingestion proof)
+  OTel->>OTel: Filter, transform, batch
+  OTel->>Raw: Export using managed identity
+  Raw->>MV: Incremental minute-level aggregation
+  G->>KQL: Time-bounded overview queries
+  KQL->>MV: Query view + unmaterialized delta
+  KQL-->>G: Counts, errors, approximate percentiles
+  G->>Raw: TraceID detail query
+  Raw-->>G: Related log and parent/child spans
