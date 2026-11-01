@@ -48,7 +48,7 @@ def main():
                 with urllib.request.urlopen(health, timeout=2) as response:
                     if response.status == 200:
                         break
-            except (urllib.error.URLError, TimeoutError):
+            except (urllib.error.URLError, TimeoutError, ConnectionError):
                 pass
             if time.monotonic() > deadline:
                 raise RuntimeError('Collector did not become healthy')
