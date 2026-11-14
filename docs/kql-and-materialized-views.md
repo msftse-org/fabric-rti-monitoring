@@ -16,10 +16,11 @@ The views accept the synthetic contract and are created before the producer
 runs. They have one source table and one final `summarize`; time filtering happens
 when querying. No request, user, trace, or span identifier is a rollup dimension.
 
-Raw data has a **7-day** retention policy and a **1-day** hot-cache policy. Views
-retain **30 days** of aggregate history with **1 day** hot. Cache and retention
-are different policies: leaving hot cache does not delete data. Aggregate history
-does not preserve every raw record needed to reconstruct a trace.
+Raw data has a **7-day** retention policy and a **1-day** hot-cache policy.
+Materialized views use the Eventhouse's default retention with **1 day** hot;
+the sample does not override their retention. Cache and retention are different
+policies: leaving hot cache does not delete data. Aggregate history does not
+preserve every raw record needed to reconstruct a trace.
 
 ## Serving functions
 
@@ -29,11 +30,12 @@ does not preserve every raw record needed to reconstruct a trace.
 | `RequestsOverview(lookback)` | Root request count, errors, mean duration, and approximate P50/P95 latency. |
 | `MetricDurationOverview(lookback)` | Duration gauge sample count, mean, minimum, and maximum. |
 
-The dashboard passes `30d` and applies Grafana's selected time range. Each
+The Grafana dashboards pass `30d` and apply Grafana's selected time range. Each
 function queries the **view name**, which combines its materialized part with
 the unmaterialized delta. This keeps the result current relative to data already
 ingested. `materialized_view()` can trade freshness for speed; it is not used by
-the baseline dashboard.
+the baseline dashboards. The three Fabric Real-Time Dashboards use the same
+functions with bounded raw-table queries for per-service, log, and trace detail.
 
 ```kusto
 RequestsOverview(1h)

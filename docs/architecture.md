@@ -5,7 +5,7 @@ presenting it. Each boundary has a small interface: OTLP/HTTP into the collector
 the Azure Data Explorer exporter into Eventhouse, and KQL query results into
 Grafana.
 
-![Azure-hosted collector, Fabric raw tables and materialized views, and managed-identity Grafana access.](assets/architecture-azure.png)
+![Container Apps and optional AKS collectors exporting to Fabric raw tables, materialized views, and KQL functions. A Consume panel groups dashboards and apps, exploration, alerting, and AI agents that use MCP servers, Agent Skills, and the Fabric data agent.](assets/architecture-azure.png)
 
 ## Components
 
@@ -18,6 +18,7 @@ Grafana.
 | Eventhouse / KQL database | Stores typed raw telemetry and incrementally maintained materialized views. |
 | KQL serving functions | Expose time-bounded summaries with stable column names for dashboards. |
 | Managed Grafana | Queries the Fabric query endpoint using its own read-only identity. |
+| Other consumers | Power BI, notebooks, Activator, MCP servers, Agent Skills, and the Fabric data agent read the same KQL database. See [Consume the telemetry](consume.md). |
 | Log Analytics | Stores Container Apps platform and collector console diagnostics so the telemetry pipeline can itself be investigated. Application OTLP records go to Fabric. |
 
 The Container Apps environment is a managed public-network environment with an
@@ -52,9 +53,10 @@ receiver inside the environment.
 
 | Surface | Defined here | Why it is separate |
 | --- | --- | --- |
-| Azure Resource Manager | Bicep: identity, optional capacity, Grafana, collector environment, job, and platform diagnostics. | These are Azure resources. |
+| Azure Resource Manager | Bicep or Terraform: identity, optional capacity, Grafana, collector environment, job, and platform diagnostics. | These are Azure resources. |
 | Fabric service API | Python bootstrap: workspace, Eventhouse, KQL database, and Grafana workspace Viewer grant. | These are Fabric service objects with Fabric permissions. |
 | Kusto data plane | KQL: tables, mappings, policies, materialized views, functions, and database ingestor grants. | These define data storage, query behavior, and data access. |
+| Kubernetes API (optional) | Helm chart: AKS collector, instrumented services, load generator, and network policies. | These are cluster workloads, installed after Terraform creates the cluster. |
 
 Creating Azure resources does not grant access to Fabric data. A capacity ARM
 resource ID is also different from the Fabric capacity UUID used to assign a
@@ -68,12 +70,19 @@ The baseline uses managed streaming with queued fallback, short raw retention, a
 It leaves application instrumentation, continuous generation, alert routing,
 high availability, and private network integration as deliberate extensions.
 
+The optional [AKS workload demo](aks-demo.md) covers the first two. Six
+OpenTelemetry SDK services and a load generator send OTLP to an in-cluster
+collector. That collector exchanges a Kubernetes service account token for the
+same collector managed identity through a federated credential, so it reuses the
+existing ingestor grant and stores no secret. Its records use the environment
+`aks`, so they remain distinguishable from the `demo` job.
+
 An observability outage should not control application authorization or
 transactional state. When adding a workload, preserve that separation and define
 the acceptable telemetry loss and recovery behavior.
 
 For a retained broker handoff, see the separate
-[Event Hubs and Eventstream option](buffered-architecture.md). Its Bicep broker
+[Event Hubs and Eventstream option](buffered-architecture.md). Its Bicep/Terraform broker
 foundation is available; the complete buffered ingestion and projection profile
 requires additional implementation. The primary deployment stays direct.
 

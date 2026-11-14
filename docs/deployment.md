@@ -4,6 +4,10 @@ This guide creates a cloud-hosted OpenTelemetry collector, a bounded synthetic
 telemetry job, a Fabric Eventhouse and an Azure Managed Grafana dashboard. No
 application, local container runtime or custom container build is required.
 
+This page uses **Bicep**. For the parallel IaC option, follow the
+[Terraform deployment guide](terraform-deployment.md); choose one owner for each
+Azure resource.
+
 Deployment has three stages: provision Azure identities and visualization,
 bootstrap Fabric and grant ingestion access, then start the collector. This order
 lets the collector authenticate with a managed identity from its first start.
@@ -340,7 +344,7 @@ in-memory queue and bounded retry period do not guarantee durable delivery acros
 collector replacement; repeated attempts can duplicate telemetry. Investigate the
 first run before starting another one.
 
-## 8. Configure Grafana and import the dashboard
+## 8. Configure Grafana and import the dashboards
 
 Prepare a private copy of the data source definition. This replaces the exact
 `__KUSTO_CLUSTER_URI__` token and uses the bootstrapped database name:
@@ -370,16 +374,84 @@ Grafana Admin. Managed Grafana Standard includes the Azure Data Explorer plugin.
 3. Select **Save & test**. The prepared `datasource.local.json` records these
    values for automation or review; the UI does not import a data source JSON
    file as a dashboard.
-4. Open **Dashboards > New > Import**, upload
-   [`grafana/overview.json`](../grafana/overview.json), and map the **Fabric
-   Eventhouse** data source input (`DS_FABRIC`) to the data source just created.
-5. Import the dashboard, choose a time window containing the run, and confirm the
-   request, log and metric panels. Copy a recent log's `TraceID` into the
-   dashboard's **Trace ID** field to inspect the span detail.
+4. Open **Dashboards > New > Import** and import
+   [`grafana/metrics.json`](../grafana/metrics.json),
+   [`grafana/logs.json`](../grafana/logs.json), and
+   [`grafana/traces.json`](../grafana/traces.json) one at a time. For each, map
+   the **Fabric Eventhouse** data source input (`DS_FABRIC`) to the data source
+   just created. The shared `fabric-rti` tag adds links between the three dashboards.
+   These links keep the time range.
+5. Choose a time window containing the run, then select **KQL database**,
+   **Environment**, and **Service**:
+   - **Fabric RTI Metrics** shows golden signals plus per-service requests, error
+     rate, mean and p95 latency. It also has requests by outcome, gateway
+     p50/p95, latency spikes, and a service health table.
+   - **Fabric RTI Logs** shows volume by severity and service and a log stream
+     filtered by **Severity**, **Search**, and **Trace ID**. It also has error
+     lines by service, latest errors, and a breakdown.
+   - **Fabric RTI Traces** has **Find a trace** (**Show** most recent, errors, or
+     slowest) and a service map. It also has a trace waterfall with each span's
+     logs, traces per minute, and p95 self time by operation.
 
-The dashboard contains Grafana import-time `__inputs`. Use the import screen so
-that the input is resolved; posting the unmodified file directly to the dashboard
+   A blank **Trace ID** selects the newest complete multi-span trace. Click a
+   TraceID in any table to open that trace in the waterfall or its logs.
+
+The dashboards contain Grafana import-time `__inputs`. Use the import screen so
+that the input is resolved; posting the unmodified files directly to the dashboard
 API does not perform that selection. See [Managed Grafana data sources](https://learn.microsoft.com/en-us/azure/managed-grafana/how-to-data-source-plugins-managed-identity).
+
+## 9. Publish the Fabric Real-Time Dashboards (optional)
+
+The same views are also available natively in Fabric as three subject-specific
+Real-Time Dashboards: **Fabric RTI Metrics**, **Fabric RTI Logs**, and
+**Fabric RTI Traces**. Their placeholder-data-source definitions live in
+[`fabric/dashboards/`](../fabric/dashboards/). The deploy script creates any
+missing items, resolves the navigation links between them, binds each to the
+bootstrapped KQL database, and replaces the definitions of existing items with
+the same names:
+
+```bash
+export FABRIC_WORKSPACE_ID="$(python3 -c \
+  'import json; print(json.load(open("output/fabric.local.json"))["workspaceId"])')"
+python3 scripts/deploy-fabric-dashboard.py \
+  --workspace-id "$FABRIC_WORKSPACE_ID" --database-name "$KUSTO_DATABASE"
+```
+
+The script uses the Azure CLI sign-in and prints all three dashboard URLs. It
+requires permission to create and update items in the workspace. It never
+deletes items or changes permissions. Replacing a definition discards portal
+edits, so download any changes you want to keep first (**Manage > Download
+file**).
+
+| Page | Contents | Interactions |
+| --- | --- | --- |
+| Metrics | Requests per minute, error rate, mean latency, reporting pods and freshness cards; per-service time charts; outcomes; gateway latency; latency spikes; service health. | Select a service in **Service health** to cross-filter the dashboard. Use the navigation links to switch subjects. |
+| Logs | Volume, error and freshness cards; volume by severity and service; log stream with error rows highlighted; error lines by service; latest errors; breakdown. | **Severity** and **Search** parameters. Search accepts text or an exact TraceID; paste that ID into **Trace ID** on Traces to investigate the waterfall. |
+| Traces | Trace, failure and duration cards; **Calls by dependency** and a dependency table; **Find a trace**; trace waterfall; spans of the trace with their log counts, and its logs; traces per minute; p95 self time. | **Trace list** orders the picker. Select a TraceID in **Find a trace** to draw it, or paste an ID from Logs into **Trace ID**. |
+
+**Time range**, **Environment**, and **Service** apply to every page, and the
+dashboards refresh every 30 seconds except Traces, which refreshes every minute.
+The Trace picker defaults to the newest complete trace. A free-text **Trace ID**
+overrides the picker and narrows **Find a trace**; clear it to return to the
+picker. Navigation links move between separate dashboard items because
+drillthrough is limited to pages within one dashboard.
+
+Every Fabric visual is native. **Trace waterfall** is a stacked bar chart that
+starts each span's bar at its offset using an invisible lead-in series, with
+failed spans in red; **Calls by dependency** is a stacked bar chart of
+successful and failed calls per minute for each caller-to-callee hop. Both are
+built entirely in KQL, and **Service dependencies** and **Spans in this trace**
+show the same data as native tables. Plotly and other custom visuals are not
+used: they require every data source of the dashboard to use a cloud connection
+that runs as the dashboard editor. That connection is created interactively in
+the portal and cannot be set through the dashboard definition or REST API, so
+a scripted deployment cannot enable them (the tile reports "Plotly requires a
+data source with an associated data connection"). The Grafana **Traces**
+dashboard keeps the node-graph service map and trace panel.
+
+By default, the dashboard queries with each viewer's own identity. Viewers
+therefore need read access to the KQL database as well as the dashboard. See
+[Real-Time Dashboard permissions](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/dashboard-permissions).
 
 ## Cleanup
 

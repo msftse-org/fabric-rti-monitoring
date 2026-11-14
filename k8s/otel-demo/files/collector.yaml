@@ -1,0 +1,111 @@
+# AKS variant of collector/cloud.yaml. Only three things differ:
+#   1. Authentication uses Entra workload identity (use_azure_auth) instead of
+#      the Container Apps managed identity endpoint.
+#   2. resource/k8s stamps every record with the cluster name.
+#   3. transform/demo also keeps the Kubernetes keys apps set via the downward API.
+# The filter/synthetic selector must stay identical to cloud.yaml.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 192
+    spike_limit_mib: 48
+  # A demo selector, not an authentication or data-loss-prevention boundary.
+  filter/synthetic:
+    error_mode: propagate
+    traces:
+      span:
+        - 'resource.attributes["demo.synthetic"] != true'
+        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.inventory" and name != "demo.payment" and name != "demo.shipping" and name != "demo.notifications" and name != "demo.postgres.query"'
+      spanevent:
+        - 'true'
+    logs:
+      log_record:
+        - 'resource.attributes["demo.synthetic"] != true'
+    metrics:
+      metric:
+        - 'resource.attributes["demo.synthetic"] != true'
+        - 'name != "demo.request.duration" and name != "demo.requests"'
+  resource/k8s:
+    attributes:
+      - key: k8s.cluster.name
+        value: ${env:K8S_CLUSTER_NAME}
+        action: upsert
+  # Keep a small teaching contract. Review a workload-specific privacy policy
+  # before adding real producers. Attribute VALUES are not automatically safe.
+  transform/demo:
+    error_mode: propagate
+    trace_statements:
+      - context: span
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic", "k8s.cluster.name", "k8s.namespace.name", "k8s.deployment.name", "k8s.pod.name", "k8s.node.name"])
+          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id"])
+          - set(status.message, "")
+    log_statements:
+      - context: log
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic", "k8s.cluster.name", "k8s.namespace.name", "k8s.deployment.name", "k8s.pod.name", "k8s.node.name"])
+          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id"])
+          - set(body, "Synthetic request completed")
+    metric_statements:
+      - context: datapoint
+        statements:
+          - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic", "k8s.cluster.name", "k8s.namespace.name", "k8s.deployment.name", "k8s.pod.name", "k8s.node.name"])
+          - keep_keys(attributes, ["demo.scenario", "outcome"])
+  # Continuous traffic: each Fabric ingestion call has a fixed cost, so send
+  # fewer, larger batches. One-second batches overflowed the logs queue.
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+exporters:
+  # This is the database QUERY URI. The SDK discovers ingestion endpoints.
+  azuredataexplorer:
+    cluster_uri: ${env:KUSTO_CLUSTER_URI}
+    db_name: ${env:KUSTO_DATABASE}
+    # Workload identity: the AKS webhook injects AZURE_CLIENT_ID, AZURE_TENANT_ID,
+    # and a projected token for the annotated service account. No secret.
+    use_azure_auth: true
+    logs_table_name: OTELLogs
+    traces_table_name: OTELTraces
+    metrics_table_name: OTELMetrics
+    ingestion_type: managed
+    timeout: 30s
+    sending_queue:
+      enabled: true
+      num_consumers: 4
+      queue_size: 128
+    retry_on_failure:
+      enabled: true
+      initial_interval: 2s
+      max_interval: 15s
+      max_elapsed_time: 2m
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, resource/k8s, transform/demo, batch]
+      exporters: [azuredataexplorer]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, resource/k8s, transform/demo, batch]
+      exporters: [azuredataexplorer]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/synthetic, resource/k8s, transform/demo, batch]
+      exporters: [azuredataexplorer]

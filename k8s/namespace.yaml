@@ -1,0 +1,11 @@
+# Apply before installing the chart. The name must match the Terraform
+# federated credential subject system:serviceaccount:otel-demo:otel-collector.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: otel-demo
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

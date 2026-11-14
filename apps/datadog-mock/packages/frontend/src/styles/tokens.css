@@ -1,0 +1,95 @@
+:root {
+  --font: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'Roboto Mono', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --bg: #ffffff;
+  --bg-page: #f9fafb;
+  --bg-raised: #ffffff;
+  --bg-hover: #f1f4f8;
+  --bg-selected: #e4eefb;
+  --bg-label: #e3e5ec;
+  --bg-input: #ffffff;
+  --bg-sunken: #f4f6f9;
+  --bg-code: #f6f7f9;
+
+  --border: #d8dce5;
+  --border-light: #e8ebf0;
+  --border-strong: #b6bdcb;
+
+  --text: #1c2b34;
+  --text-2: #4a5a68;
+  --text-3: #76828f;
+  --text-on-primary: #ffffff;
+
+  --primary: #2d69c9;
+  --primary-hover: #2459b0;
+  --nav-active: #016bc2;
+  --link: #2b66c1;
+  --focus: #1f78d4;
+  --brand: #632ca6;
+  --brand-soft: #efe7fa;
+
+  --rail-bg: #292e39;
+  --rail-hover: #3a4150;
+  --rail-text: #c8cdd8;
+
+  --ok: #4fbf6b;
+  --ok-soft: #85d499;
+  --warn: #f5a524;
+  --warn-soft: #fdd8a2;
+  --alert: #eb364b;
+  --nodata: #7c86a0;
+  --pink: #ff5ebe;
+
+  --sev-info: #a4cae3;
+  --sev-error: #e25446;
+  --sev-warn: #f5a524;
+  --sev-debug: #b9c1cd;
+  --chart-hits: #95caff;
+  --chart-errors: #e4574b;
+  --chart-grid: #eceff4;
+  --chart-axis: #5f6c79;
+
+  --shadow-pop: 0 6px 20px rgba(22, 32, 52, 0.2);
+  --shadow-card: 0 1px 2px rgba(22, 32, 52, 0.06);
+  --radius: 3px;
+  --rail-w: 52px;
+  --header-h: 48px;
+}
+
+[data-theme='dark'] {
+  --bg: #1d1c20;
+  --bg-page: #17161a;
+  --bg-raised: #26252b;
+  --bg-hover: #2c2b32;
+  --bg-selected: #21354d;
+  --bg-label: #36353d;
+  --bg-input: #1d1c20;
+  --bg-sunken: #19181d;
+  --bg-code: #212026;
+
+  --border: #3b3a43;
+  --border-light: #2e2d35;
+  --border-strong: #55535f;
+
+  --text: #e9eaee;
+  --text-2: #b8bbc6;
+  --text-3: #8d909d;
+
+  --primary: #3d7fe0;
+  --primary-hover: #5591ea;
+  --nav-active: #0b6bcb;
+  --link: #72b2f7;
+  --focus: #6cb3ff;
+  --brand-soft: #2d1f45;
+
+  --ok: #4fbf6b;
+  --sev-info: #6aa6d8;
+  --sev-error: #e3554c;
+  --chart-hits: #5c9fe0;
+  --chart-grid: #2d2c34;
+  --chart-axis: #a4a7b3;
+  --shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.55);
+  --shadow-card: none;
+  color-scheme: dark;
+}

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: otel-demo
+description: Synthetic OpenTelemetry shop on AKS that streams traces, metrics, and logs to Fabric Real-Time Intelligence.
+type: application
+version: 0.2.1
+appVersion: "1.1.0"

@@ -24,6 +24,51 @@ jobs:
           az bicep build-params --file infra/main.bicepparam --outfile /tmp/fabric-rti.parameters.json
           az bicep build --file infra/optional/event-hubs.bicep --outfile /tmp/fabric-rti.event-hubs.json
 
+  terraform:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory:
+          - infra/terraform
+          - infra/terraform-state
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: 1.14.3
+          terraform_wrapper: false
+      - uses: terraform-linters/setup-tflint@6e87008f9dd1fe3e34e66aca6c97b4a69f72a7f4 # v4
+        with:
+          tflint_version: v0.65.0
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Initialize without a cloud backend
+        run: terraform init -backend=false -input=false -lockfile=readonly
+      - name: Validate, test mocked plans, and lint
+        run: |
+          terraform validate
+          terraform test
+          tflint --recursive
+
+  aks-chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: v4.2.0
+      - name: Lint and render the AKS demo chart
+        run: |
+          helm lint k8s/otel-demo --strict --namespace otel-demo --values k8s/aks.example.yaml
+          helm template otel-demo k8s/otel-demo --namespace otel-demo --values k8s/aks.example.yaml > /dev/null
+          if helm template otel-demo k8s/otel-demo --namespace default --values k8s/aks.example.yaml > /dev/null 2>&1; then
+            echo "The chart must refuse namespaces the federated credential does not trust." >&2
+            exit 1
+          fi
+
   collector-runtime:
     runs-on: ubuntu-latest
     env:
@@ -32,7 +77,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Pull pinned collector
         run: docker pull "$COLLECTOR_IMAGE"
-      - name: Validate both collector configurations
+      - name: Validate the local, cloud, and AKS collector configurations
         run: |
           for config in local cloud; do
             docker run --rm \
@@ -42,5 +87,32 @@ jobs:
               --volume "$PWD/collector:/etc/otelcol:ro" \
               "$COLLECTOR_IMAGE" validate --config="/etc/otelcol/$config.yaml"
           done
-      - name: Run cloud processors with a local debug sink
+          docker run --rm \
+            --env KUSTO_CLUSTER_URI=https://example.kusto.fabric.microsoft.com \
+            --env KUSTO_DATABASE=Observability \
+            --env K8S_CLUSTER_NAME=dev-aks-frti \
+            --volume "$PWD/k8s/otel-demo/files:/etc/otelcol:ro" \
+            "$COLLECTOR_IMAGE" validate --config=/etc/otelcol/collector.yaml
+      - name: Run cloud and AKS processors with a local debug sink
         run: python3 scripts/smoke_collector.py
+
+  mock-apps:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --prefix rti-oncall/packages/functions
+      - name: Test the telemetry bundle logic
+        run: npm test
+      - name: Typecheck and build the three Rayfin mock apps
+        run: |
+          npm run typecheck
+          npm run build

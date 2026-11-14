@@ -1,0 +1,18 @@
+The synthetic shop is running in namespace {{ .Release.Namespace }} on cluster {{ .Values.clusterName }}.
+
+  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl logs -n {{ .Release.Namespace }} deploy/otel-collector
+
+Telemetry lands in Fabric database {{ .Values.kusto.database }} within a few minutes. Check it in KQL:
+
+  OTELTraces
+  | where StartTime > ago(15m)
+  | where tostring(ResourceAttributes["k8s.cluster.name"]) == "{{ .Values.clusterName }}"
+  | summarize Spans = count() by SpanName
+
+{{- if .Values.loadgen.enabled }}
+
+The load generator sends {{ .Values.loadgen.requestsPerSecond }} request(s)/s. Pause traffic with:
+
+  kubectl scale -n {{ .Release.Namespace }} deploy/loadgen --replicas=0
+{{- end }}

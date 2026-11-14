@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@telemetry": ["../../../telemetry/client/index.ts"]
+    }
+  },
+  "include": ["src", "../../../telemetry/client"]
+}

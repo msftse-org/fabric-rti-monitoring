@@ -1,0 +1,7 @@
+# Copy to devenv.local.tfvars. Supply subscription_id through TF_VAR_subscription_id.
+environment = "dev"
+project     = "frti"
+location    = "westus3"
+
+# Optionally restrict access to the public egress IPs of operators and runners.
+allowed_ips = []

@@ -1,0 +1,13 @@
+{
+  "name": "@rti-mock/oncall",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Deterministic on-call engine shared by the Datadog mock and the Fabric RTI on-call app: schedules, routing, escalation, pages and analytics from Eventhouse history.",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "node --test \"test/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@rti-mock/coralogix-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test": "node --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "build:fabric": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5182 --strictPort"
+  }
+}

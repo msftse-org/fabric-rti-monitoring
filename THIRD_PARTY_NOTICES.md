@@ -27,8 +27,29 @@ do not represent a new product or an endorsement of this sample.
 See [asset provenance](docs/assets/README.md) for exact download sources. The
 Azure Managed Grafana icon is from Microsoft's Azure architecture icon package.
 
+## Model Context Protocol and GitHub Copilot marks
+
+`docs/assets/official/model-context-protocol-icon.svg` is the Model Context
+Protocol mark from the [modelcontextprotocol/modelcontextprotocol](https://github.com/modelcontextprotocol/modelcontextprotocol)
+repository. That project licenses code and specifications under the Apache
+License 2.0 (some contributions remain under MIT) and documentation under
+CC BY 4.0; see its [license](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/LICENSE).
+
+`docs/assets/official/github-copilot-octicon-24.svg` is the Copilot icon from
+[GitHub Primer Octicons](https://github.com/primer/octicons), released under the
+[MIT License](https://github.com/primer/octicons/blob/main/LICENSE), Copyright
+(c) GitHub Inc.
+
+Both marks identify the protocol and product that the architecture can use and
+do not represent an endorsement of this sample.
+
 ## Runtime images
 
 The sample references the separately distributed OpenTelemetry Collector Contrib
 and official Python container images. Their upstream licenses and dependencies
 remain applicable. This repository does not redistribute those image layers.
+
+The optional AKS demo installs the OpenTelemetry Python SDK, the OTLP HTTP
+exporter, and their dependencies from PyPI when its pods start. The versions are
+pinned in `k8s/otel-demo/files/requirements.txt`. The packages keep their
+upstream licenses and are not redistributed by this repository.

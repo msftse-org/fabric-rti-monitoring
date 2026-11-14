@@ -1,5 +1,5 @@
 # Demo-only receiver behind Container Apps internal ingress.
-# The Bicep deployment exposes HTTPS only inside the same environment.
+# Both infrastructure options expose HTTPS only inside the same environment.
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
@@ -21,7 +21,7 @@ processors:
     traces:
       span:
         - 'resource.attributes["demo.synthetic"] != true'
-        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.payment" and name != "demo.postgres.query"'
+        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.inventory" and name != "demo.payment" and name != "demo.shipping" and name != "demo.notifications" and name != "demo.postgres.query"'
       spanevent:
         - 'true'
     logs:
@@ -59,11 +59,11 @@ processors:
 
 exporters:
   # This is the database QUERY URI. The SDK discovers ingestion endpoints.
-  # Cloud baseline: no client secret. Attach the Bicep-managed collector identity.
+  # Cloud baseline: no client secret. Attach the provisioned collector identity.
   azuredataexplorer:
     cluster_uri: ${env:KUSTO_CLUSTER_URI}
     db_name: ${env:KUSTO_DATABASE}
-    # Select the Bicep-managed user-assigned identity by its CLIENT ID.
+    # Select the user-assigned collector identity by its CLIENT ID.
     managed_identity_id: ${env:AZURE_CLIENT_ID}
     logs_table_name: OTELLogs
     traces_table_name: OTELTraces

@@ -1,5 +1,14 @@
 # Azure infrastructure
 
+Choose the existing Bicep path described below or the parallel
+[Terraform path](terraform/README.md). Both share the collector, emitter, and
+Fabric bootstrap. Terraform also provides a
+[separate state-storage bootstrap](terraform-state/README.md) and the optional
+[AKS workload demo](../docs/aks-demo.md), which has no Bicep equivalent. Do not
+use both tools to manage the same resources.
+
+## Bicep path
+
 `main.bicep` targets an existing resource group. All three billable resource
 creation switches default to `false`. The default deployment creates only the
 collector's user-assigned managed identity, which has no standalone charge.

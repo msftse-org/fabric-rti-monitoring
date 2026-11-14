@@ -1,0 +1,34 @@
+# Copy to devenv.local.tfvars. Supply subscription_id through TF_VAR_subscription_id.
+environment = "dev"
+project     = "frti"
+location    = "westus3"
+
+create_resource_group = true
+# To use an existing dedicated group, set create_resource_group = false and:
+# resource_group_name = "dev-rg-frti"
+
+deploy_fabric_capacity         = false
+fabric_capacity_sku            = "F2"
+fabric_capacity_administrators = []
+
+deploy_managed_grafana       = false
+grafana_admin_principal_id   = ""
+grafana_admin_principal_type = "User"
+
+# Enable only after Fabric bootstrap and the database ingestor grant.
+deploy_collector  = false
+kusto_cluster_uri = ""
+kusto_database    = "Observability"
+
+# Optional AKS demo cluster (docs/aks-demo.md). Reuses the collector identity
+# through workload identity, so it also needs the Kusto settings above.
+deploy_aks               = false
+aks_admin_principal_id   = ""
+aks_admin_principal_type = "User"
+aks_node_vm_size         = "Standard_D2ds_v5"
+aks_node_count           = 1
+aks_authorized_ip_ranges = []
+
+# Broker resources only; this does not configure a buffered ingestion pipeline.
+deploy_event_hubs                      = false
+fabric_workspace_identity_principal_id = ""

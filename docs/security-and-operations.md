@@ -16,6 +16,11 @@ their service endpoints, and Grafana's public endpoint uses Entra authentication
 Restrict who can deploy code into the collector's environment: the baseline has
 no per-producer authentication inside that trusted boundary.
 
+The optional [AKS demo](aks-demo.md) adds a federated credential to the same
+collector identity. It trusts one service account in one namespace on one
+cluster's OIDC issuer. Anyone who can run pods as that service account can ingest
+data, so restrict who can deploy into that namespace.
+
 For a workload that needs a private network, design Container Apps VNet
 integration, outbound access, name resolution, and supported Fabric/Grafana private
 connectivity together. Those are additional infrastructure decisions, not settings
@@ -31,9 +36,9 @@ links, scope metadata, and other fields can still carry sensitive content if a
 different producer is connected. Define and verify a workload-specific data
 contract before accepting real traffic.
 
-Keep credentials and environment output outside the repository. Private parameter
-and generated JSON files use `*.local.bicepparam` and `*.local.json`, which are
-ignored. Do not upload actual telemetry, portal exports, deployment output, or
+Keep credentials and environment output outside the repository. Private parameter,
+generated JSON, and generated Helm values files use `*.local.bicepparam`,
+`*.local.json`, and `*.local.yaml`, which are ignored. Do not upload actual telemetry, portal exports, deployment output, or
 tokens as an issue attachment or test fixture.
 
 ## Reliability and troubleshooting
@@ -67,10 +72,11 @@ costs continue outside a presentation:
 | Resource | Main cost drivers | Control |
 | --- | --- | --- |
 | Fabric capacity | SKU, active time, and workload demand. | Reuse an appropriate active capacity or explicitly create one; pause a dedicated demo capacity after use. |
-| Eventhouse | Ingestion, query/materialization workload, and retained data. | Bounded producer; 7-day raw and 30-day aggregate retention; minimum-consumption setting starts at zero. |
+| Eventhouse | Ingestion, query/materialization workload, and retained data. | Bounded producer; 7-day raw retention; view retention follows the Eventhouse default; minimum-consumption setting starts at zero. |
 | Container Apps | One warm collector replica and manual job executions. | No scheduled producer; remove idle demo runtime when finished. |
 | Managed Grafana | Standard instance and applicable service charges. | Remove dedicated demo instances after use; pausing Fabric does not stop Grafana charges. |
 | Log Analytics | Platform log ingestion and retention. | Only pipeline diagnostics; 30-day retention. |
+| AKS (optional) | One node VM, Standard load balancer, and public IP while running; continuous Fabric ingestion. | Free control plane; scale the load generator to zero, `az aks stop`, or set `deploy_aks = false`. |
 
 A small starting SKU is not a capacity or performance guarantee. Measure data
 volume, ingestion latency, query time, materialization health, and cost before
@@ -82,3 +88,9 @@ incremental deployment. Azure resource-group deletion also does not delete a
 Fabric workspace. Follow the separate Fabric and Azure cleanup steps in the
 [deployment guide](deployment.md), using a dedicated demo scope whose data you can
 remove.
+
+Terraform has different lifecycle semantics: disabling an enabled feature flag
+plans deletion of its managed resources. Preserve private inputs between stages
+and review every plan. Its optional state-storage bootstrap is separately
+billable and must outlive the application state it stores. See the
+[Terraform lifecycle guidance](terraform-deployment.md#lifecycle-and-cleanup).

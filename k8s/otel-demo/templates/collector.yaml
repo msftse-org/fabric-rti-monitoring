@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.workloadIdentity.serviceAccountName }}
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+  annotations:
+    azure.workload.identity/client-id: {{ .Values.workloadIdentity.clientId | quote }}
+    azure.workload.identity/tenant-id: {{ .Values.workloadIdentity.tenantId | quote }}
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/name: otel-collector
+spec:
+  selector:
+    app.kubernetes.io/name: otel-collector
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+  template:
+    metadata:
+      labels:
+        {{- include "otel-demo.labels" . | nindent 8 }}
+        app.kubernetes.io/name: otel-collector
+        app.kubernetes.io/component: collector
+        # Opts the pod into the AKS workload identity webhook, which injects
+        # AZURE_CLIENT_ID, AZURE_TENANT_ID, and a projected federated token.
+        azure.workload.identity/use: "true"
+      annotations:
+        checksum/config: {{ .Files.Get "files/collector.yaml" | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Values.workloadIdentity.serviceAccountName }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        {{- include "otel-demo.podSecurity" . | nindent 8 }}
+      containers:
+        - name: collector
+          image: {{ .Values.images.collector }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          args: ["--config=/conf/collector.yaml"]
+          env:
+            - name: KUSTO_CLUSTER_URI
+              value: {{ .Values.kusto.clusterUri | quote }}
+            - name: KUSTO_DATABASE
+              value: {{ .Values.kusto.database | quote }}
+            - name: K8S_CLUSTER_NAME
+              value: {{ .Values.clusterName | quote }}
+            - name: GOMEMLIMIT
+              value: 300MiB
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: health
+              containerPort: 13133
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 384Mi
+          securityContext:
+            {{- include "otel-demo.containerSecurity" . | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi

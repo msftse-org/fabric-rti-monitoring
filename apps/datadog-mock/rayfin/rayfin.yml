@@ -1,0 +1,31 @@
+id: datadog-mock
+name: Datadog Mock (Fabric RTI)
+version: 1.0.0
+services:
+  auth:
+    enabled: true
+    fabric:
+      enabled: true
+      externalEntraExchange: true
+    password:
+      enabled: false
+    allowedRedirectUris:
+      - http://localhost:5181
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - https://mint-shell-ff7aa7eacf-westus3.webapp.fabricapps.net
+  data:
+    enabled: false
+  staticHosting:
+    enabled: true
+    path: packages/frontend
+    folder: dist
+    buildCommand: npm run build:fabric
+    indexDocument: index.html
+    assetAccess: protected
+    embedded:
+      only: false
+  storage:
+    enabled: false
+  functions:
+    enabled: false

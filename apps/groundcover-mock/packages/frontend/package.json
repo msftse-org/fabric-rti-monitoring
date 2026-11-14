@@ -1,0 +1,13 @@
+{
+  "name": "@rti-mock/groundcover-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "build:fabric": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5183 --strictPort"
+  }
+}

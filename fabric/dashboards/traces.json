@@ -1,0 +1,1134 @@
+{
+  "schema_version": 75,
+  "title": "Fabric RTI Traces",
+  "autoRefresh": {
+    "enabled": true,
+    "defaultInterval": "1m",
+    "minInterval": "30s"
+  },
+  "tiles": [
+    {
+      "id": "f78a4c30-b447-51ff-8b1b-20f86b056f97",
+      "title": "Traces",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Distinct TraceID values touching the selected services.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "4f6cfba3-c18f-5502-845d-8fcf2c0b8f02"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Traces",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "4a0582f5-9fb4-5041-9ffe-e9071d14b459",
+      "title": "Failed traces %",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Traces with at least one error span.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "a39a2b96-c2a0-55e2-b952-1a643e5e079a"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "FailedPercent",
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "34e24281-bd92-5b39-bc3a-18b55916bcd0",
+            "ruleName": "healthy",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": null,
+                "operator": "<",
+                "values": [
+                  "10"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "468abb01-3813-5a0b-abfb-d6e309e1284b",
+            "ruleName": "warning",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">=",
+                "values": [
+                  "10"
+                ]
+              },
+              {
+                "column": null,
+                "operator": "<",
+                "values": [
+                  "25"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "ab67b874-f34c-5978-83ae-fcebcae71bcb",
+            "ruleName": "critical",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">=",
+                "values": [
+                  "25"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "dc4e6265-fd1d-55ee-b541-800ca3514392",
+      "title": "p95 trace duration (ms)",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 8,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Root start to last span end.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "081bd7e1-ed35-5f37-bcfa-376e06c9566b"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "P95TraceMs",
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "4c440bfc-293d-56a2-9f5f-badf5378b101",
+            "ruleName": "healthy",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": null,
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "13ec18fe-046d-5e48-98b6-2ec3d4c40d3d",
+            "ruleName": "warning",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": null,
+                "operator": "<",
+                "values": [
+                  "2000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "a6b4426a-80cd-5f76-8c35-85a160d25e31",
+            "ruleName": "critical",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">=",
+                "values": [
+                  "2000"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "f6380b2b-4cfc-5bad-93b6-190d6e8afffc",
+      "title": "Spans per trace",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 12,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Average span count; a complete checkout produces 7.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "b0694605-4fc6-5bce-b38a-5b8f1e3d8f81"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "SpansPerTrace",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "a7fda356-2a39-5807-81d2-d59bf79f9cfb",
+      "title": "Fabric RTI",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 16,
+        "y": 0,
+        "width": 8,
+        "height": 4
+      },
+      "visualType": "markdownCard",
+      "markdownText": "[Metrics]({{url:metrics}}) · [Logs]({{url:logs}}) · **Traces**\n\nPick a trace in **Trace**, paste one from Logs into **Trace ID**, or right-click a TraceID in *Find a trace* → **Cross-filter**. Red bars in the waterfall failed.",
+      "visualOptions": {}
+    },
+    {
+      "id": "c593ff97-fba0-5f52-98ba-8bf9faa05504",
+      "title": "Calls by dependency",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 0,
+        "y": 4,
+        "width": 16,
+        "height": 10
+      },
+      "visualType": "stackedbar",
+      "description": "Caller → callee hops derived from parent/child spans, in request order. Green calls succeeded, red calls failed.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "c686d7df-b653-5318-ad09-dc79f1a84c64"
+      },
+      "visualOptions": {
+        "xColumn": "Dependency",
+        "yColumns": [
+          "calls/min ok",
+          "calls/min failed"
+        ],
+        "seriesColumns": null,
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "calls per minute",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": [],
+        "seriesColors": {
+          "calls/min ok": "rgba(16,124,16,1)",
+          "calls/min failed": "rgba(209,52,56,1)"
+        },
+        "forceAxisTicks": true
+      }
+    },
+    {
+      "id": "969a7c29-2e10-5440-9255-63c20b588750",
+      "title": "Service dependencies",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 16,
+        "y": 4,
+        "width": 8,
+        "height": 10
+      },
+      "visualType": "table",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "3355b8df-8c39-5e87-8a80-822edddd68e9"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "6e58eaa4-3e20-524b-9b48-630bc493d30c",
+            "ruleName": "healthy",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "ErrorPercent",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "ErrorPercent",
+                "operator": "<",
+                "values": [
+                  "10"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "dc46c255-d2b8-5759-b92e-c753bfc4d9ea",
+            "ruleName": "warning",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "ErrorPercent",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "ErrorPercent",
+                "operator": ">=",
+                "values": [
+                  "10"
+                ]
+              },
+              {
+                "column": "ErrorPercent",
+                "operator": "<",
+                "values": [
+                  "25"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "c8aa7242-086d-53d4-8fb2-b2e8b7a31615",
+            "ruleName": "critical",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "ErrorPercent",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "ErrorPercent",
+                "operator": ">=",
+                "values": [
+                  "25"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "465301bc-322a-5e3a-a0c1-ed5d32b99e93",
+      "title": "Find a trace",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 0,
+        "y": 14,
+        "width": 24,
+        "height": 9
+      },
+      "visualType": "table",
+      "description": "Up to 100 traces ordered by Trace list, or only the pasted Trace ID. Right-click a TraceID → Cross-filter to draw it.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "87c6bc2a-b5ce-53b3-8a1b-c61671bde9f5"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "696d0b9d-74c6-511a-8d32-43e729d5b0ed",
+            "ruleName": "status",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Status",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Status",
+                "operator": "==",
+                "values": [
+                  "Error"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "85e70601-ea1e-59b7-820a-9ce6083cdf7a",
+            "ruleName": "healthy",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "96f5baa9-5ca3-589e-8ce1-c3c6e8aa834a",
+            "ruleName": "warning",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "DurationMs",
+                "operator": "<",
+                "values": [
+                  "2000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "029d4699-7a81-59bb-9ac3-55c497fde825",
+            "ruleName": "critical",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": ">=",
+                "values": [
+                  "2000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": false,
+        "crossFilter": [
+          {
+            "interaction": "column",
+            "property": "TraceID",
+            "parameterId": "815c8020-ff5d-52c4-9a76-581e398741db",
+            "disabled": false
+          }
+        ],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "7a38d0b8-f075-5b34-9883-52cf37d83794",
+      "title": "Trace waterfall",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 0,
+        "y": 23,
+        "width": 24,
+        "height": 12
+      },
+      "visualType": "stackedbar",
+      "description": "Spans of the selected trace on a shared timeline, in start order. Each bar starts when its span starts; red bars failed. Hover a bar for its duration, or the gap before it for its start offset. Logs per span are in the table below.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "06b9ce4f-1090-5d87-a000-1c753e52932e"
+      },
+      "visualOptions": {
+        "xColumn": "Span",
+        "yColumns": [
+          "start offset (ms)",
+          "span duration (ms)",
+          "failed span duration (ms)"
+        ],
+        "seriesColumns": null,
+        "hideLegend": true,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "ms since trace start",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": [],
+        "seriesColors": {
+          "start offset (ms)": "rgba(0,0,0,0)",
+          "span duration (ms)": "rgba(52,135,199,1)",
+          "failed span duration (ms)": "rgba(209,52,56,1)"
+        },
+        "forceAxisTicks": true
+      }
+    },
+    {
+      "id": "1e1c1f1c-1926-5073-acf8-c458ef006476",
+      "title": "Spans in this trace",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 0,
+        "y": 35,
+        "width": 14,
+        "height": 9
+      },
+      "visualType": "table",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "b9aa35cd-6f59-5911-8f68-8b55d1cd4e93"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "54fc77a5-af5c-5085-9340-fed8aad518eb",
+            "ruleName": "status",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Status",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Status",
+                "operator": "==",
+                "values": [
+                  "Error"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "3670beae-c81f-554c-acdd-26bbe1ba9035",
+      "title": "Logs in this trace",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 14,
+        "y": 35,
+        "width": 10,
+        "height": 9
+      },
+      "visualType": "table",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "ba146a93-ec14-5da7-9d9c-64c307b23c36"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "359bc32f-4931-54c3-b7fb-b67df2209f0e",
+            "ruleName": "error",
+            "applyTo": "rows",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "light",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Level",
+                "operator": "==",
+                "values": [
+                  "ERROR"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "066e3462-9145-5cb9-964c-a7e985607e60",
+      "title": "Traces per minute",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 0,
+        "y": 44,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "stackedcolumn",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "24e236d3-1e32-5d91-bb97-6d8115e28325"
+      },
+      "visualOptions": {
+        "xColumn": "WindowStart",
+        "yColumns": [
+          "ok",
+          "failed"
+        ],
+        "seriesColumns": null,
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": [],
+        "seriesColors": {
+          "ok": "rgba(16,124,16,1)",
+          "failed": "rgba(209,52,56,1)"
+        }
+      }
+    },
+    {
+      "id": "e9cbc7f8-ab09-5bea-ab72-dcc35463e337",
+      "title": "p95 self time by operation (ms)",
+      "pageId": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "layout": {
+        "x": 12,
+        "y": 44,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "bar",
+      "description": "Span duration minus time spent in child spans: where the latency is actually spent.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "9f5b45ee-5ded-5fc4-addc-9f48ee35dc3b"
+      },
+      "visualOptions": {
+        "xColumn": "Operation",
+        "yColumns": [
+          "P95SelfMs"
+        ],
+        "seriesColumns": null,
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": []
+      }
+    }
+  ],
+  "baseQueries": [
+    {
+      "id": "7adc9856-c9be-540f-b00d-e06ee8100d3c",
+      "queryId": "fc458400-f223-5929-b475-5b950dfbf2aa",
+      "variableName": "_trace_kpis"
+    }
+  ],
+  "parameters": [
+    {
+      "kind": "duration",
+      "id": "4b6c11b4-43bb-54b6-bc93-bdaa75982913",
+      "displayName": "Time range",
+      "description": "",
+      "beginVariableName": "_startTime",
+      "endVariableName": "_endTime",
+      "defaultValue": {
+        "kind": "dynamic",
+        "count": 30,
+        "unit": "minutes"
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "41673dc2-cad3-53f0-9d56-5fa58cf72d9b",
+      "displayName": "Environment",
+      "description": "Deployment environment reported by the OpenTelemetry resource.",
+      "variableName": "_environment",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "fd0cd383-6797-5ef2-b405-b8c2418bb376"
+        },
+        "columns": {
+          "value": "Environment"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "d9ba6748-1ba5-5d4c-9a2a-28719398de70",
+      "displayName": "Service",
+      "description": "Microservice (service.name).",
+      "variableName": "_service",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "static",
+        "values": [
+          {
+            "value": "gateway"
+          },
+          {
+            "value": "checkout"
+          },
+          {
+            "value": "inventory"
+          },
+          {
+            "value": "payment"
+          },
+          {
+            "value": "shipping"
+          },
+          {
+            "value": "notifications"
+          }
+        ]
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "ae7c4fa3-5d45-5703-ae45-748416b56924",
+      "displayName": "Trace list",
+      "description": "Ordering of Find a trace and the Trace picker.",
+      "variableName": "_trace_view",
+      "selectionType": "scalar",
+      "includeAllOption": false,
+      "defaultValue": {
+        "kind": "value",
+        "value": "recent"
+      },
+      "dataSource": {
+        "kind": "static",
+        "values": [
+          {
+            "value": "recent",
+            "displayText": "Most recent"
+          },
+          {
+            "value": "errors",
+            "displayText": "Failed only"
+          },
+          {
+            "value": "slowest",
+            "displayText": "Slowest first"
+          }
+        ]
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "815c8020-ff5d-52c4-9a76-581e398741db",
+      "displayName": "Trace",
+      "description": "Trace drawn in the waterfall. Defaults to the newest complete trace; Trace ID overrides it.",
+      "variableName": "_trace_id",
+      "selectionType": "scalar",
+      "includeAllOption": false,
+      "defaultValue": {
+        "kind": "query-result"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "639fd3ae-823d-5a02-b6f0-2df8f935ed13"
+        },
+        "columns": {
+          "value": "TraceID",
+          "label": "Label"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "5deedd9b-3542-5f33-ac50-96168d4ccfa4",
+      "displayName": "Trace ID",
+      "description": "Paste a TraceID, for example from the Logs dashboard. While set, it overrides Trace and filters Find a trace to that trace. Clear it to use the picker again.",
+      "variableName": "_trace_lookup",
+      "selectionType": "freetext",
+      "defaultValue": {
+        "kind": "all"
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "724810aa-e11e-5bd8-9c94-b1b66aa65a59",
+      "kind": "kusto-trident",
+      "name": "observability",
+      "clusterUri": "https://<eventhouse>.kusto.fabric.microsoft.com",
+      "databaseArtifactId": "00000000-0000-0000-0000-000000000000",
+      "database": "00000000-0000-0000-0000-000000000000",
+      "workspace": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "pages": [
+    {
+      "id": "5cdb3b0d-6ec1-5baf-93d3-0b420ab2259a",
+      "name": "Traces"
+    }
+  ],
+  "queries": [
+    {
+      "id": "fd0cd383-6797-5ef2-b405-b8c2418bb376",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| distinct Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| order by Environment asc",
+      "usedVariables": [
+        "_startTime",
+        "_endTime"
+      ]
+    },
+    {
+      "id": "639fd3ae-823d-5a02-b6f0-2df8f935ed13",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| summarize Start=min(StartTime), Finish=max(EndTime), Spans=count(), Roots=countif((isempty(ParentID) or ParentID == \"0000000000000000\")),\n    ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"), MatchingService=countif((isempty(_service) or Service in (_service))),\n    Root=take_anyif(strcat(Service, \" \", SpanName), (isempty(ParentID) or ParentID == \"0000000000000000\")), Services=make_set(Service, 16),\n    Ids=make_set(SpanID, 128), Parents=make_set_if(ParentID, not((isempty(ParentID) or ParentID == \"0000000000000000\")), 128)\n    by TraceID, Environment\n| where MatchingService > 0\n| extend DurationMs=round((Finish - Start) / 1ms, 1)\n| where Roots > 0 and Spans > 1 and array_length(set_difference(Parents, Ids)) == 0\n| where _trace_view != \"errors\" or ErrorSpans > 0\n| extend Settled=iff(Start < ago(1m), 1, 0)\n| extend Rank=iff(_trace_view == \"slowest\", DurationMs, (Start - datetime(1970-01-01)) / 1ms)\n| order by Settled desc, Rank desc\n| take 500\n| project TraceID, Label=strcat(TraceID, \" · \", format_datetime(Start, \"HH:mm:ss\"), \" · \", Root, \" · \",\n    tolong(DurationMs), \" ms · \", iff(ErrorSpans > 0, \"Error\", \"OK\"))",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service",
+        "_trace_view"
+      ]
+    },
+    {
+      "id": "fc458400-f223-5929-b475-5b950dfbf2aa",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| summarize Start=min(StartTime), Finish=max(EndTime), Spans=count(), Roots=countif((isempty(ParentID) or ParentID == \"0000000000000000\")),\n    ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"), MatchingService=countif((isempty(_service) or Service in (_service))),\n    Root=take_anyif(strcat(Service, \" \", SpanName), (isempty(ParentID) or ParentID == \"0000000000000000\")), Services=make_set(Service, 16),\n    Ids=make_set(SpanID, 128), Parents=make_set_if(ParentID, not((isempty(ParentID) or ParentID == \"0000000000000000\")), 128)\n    by TraceID, Environment\n| where MatchingService > 0\n| extend DurationMs=round((Finish - Start) / 1ms, 1)\n| summarize Traces=count(), Failed=countif(ErrorSpans > 0), P95TraceMs=percentile(DurationMs, 95),\n    SpansPerTrace=avg(Spans)\n| project Traces, FailedPercent=round(iff(Traces == 0, real(null), 100.0 * Failed / Traces), 2),\n    P95TraceMs=round(P95TraceMs, 0), SpansPerTrace=round(SpansPerTrace, 1)",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service"
+      ]
+    },
+    {
+      "id": "4f6cfba3-c18f-5502-845d-8fcf2c0b8f02",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "_trace_kpis\n| project Traces",
+      "usedVariables": [
+        "_trace_kpis"
+      ]
+    },
+    {
+      "id": "a39a2b96-c2a0-55e2-b952-1a643e5e079a",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "_trace_kpis\n| project FailedPercent",
+      "usedVariables": [
+        "_trace_kpis"
+      ]
+    },
+    {
+      "id": "081bd7e1-ed35-5f37-bcfa-376e06c9566b",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "_trace_kpis\n| project P95TraceMs",
+      "usedVariables": [
+        "_trace_kpis"
+      ]
+    },
+    {
+      "id": "b0694605-4fc6-5bce-b38a-5b8f1e3d8f81",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "_trace_kpis\n| project SpansPerTrace",
+      "usedVariables": [
+        "_trace_kpis"
+      ]
+    },
+    {
+      "id": "c686d7df-b653-5318-ad09-dc79f1a84c64",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let spans = materialize(OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| project TraceID, SpanID, ParentID, Service, SpanName, SpanKind, SpanStatus, DurationMs=(EndTime - StartTime) / 1ms);\nlet calls = union\n    (spans\n    | where SpanKind == \"SPAN_KIND_SERVER\" and not((isempty(ParentID) or ParentID == \"0000000000000000\"))\n    | join kind=inner (spans | project TraceID, ParentID=SpanID, Caller=Service) on TraceID, ParentID\n    | where Caller != Service\n    | project source=Caller, target=Service, SpanStatus, DurationMs),\n    (spans\n    | where SpanKind == \"SPAN_KIND_CLIENT\" and SpanName startswith \"demo.postgres\"\n    | project source=Service, target=\"postgres\", SpanStatus, DurationMs)\n| where isempty(_service) or source in (_service) or target in (_service);\ncalls\n| summarize Calls=count(), Errors=countif(SpanStatus == \"STATUS_CODE_ERROR\") by source, target\n| extend Hop=array_index_of(dynamic([\"gateway\", \"checkout\", \"inventory\", \"payment\", \"shipping\", \"notifications\", \"postgres\"]), target)\n| order by Hop asc, source asc\n| project Dependency=strcat(source, \" → \", target), [\"calls/min ok\"]=round((Calls - Errors) / max_of(1.0, (_endTime - _startTime) / 1m), 1),\n    [\"calls/min failed\"]=round(Errors / max_of(1.0, (_endTime - _startTime) / 1m), 1)\n| take 100",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service"
+      ]
+    },
+    {
+      "id": "3355b8df-8c39-5e87-8a80-822edddd68e9",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let spans = materialize(OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| project TraceID, SpanID, ParentID, Service, SpanName, SpanKind, SpanStatus, DurationMs=(EndTime - StartTime) / 1ms);\nlet calls = union\n    (spans\n    | where SpanKind == \"SPAN_KIND_SERVER\" and not((isempty(ParentID) or ParentID == \"0000000000000000\"))\n    | join kind=inner (spans | project TraceID, ParentID=SpanID, Caller=Service) on TraceID, ParentID\n    | where Caller != Service\n    | project source=Caller, target=Service, SpanStatus, DurationMs),\n    (spans\n    | where SpanKind == \"SPAN_KIND_CLIENT\" and SpanName startswith \"demo.postgres\"\n    | project source=Service, target=\"postgres\", SpanStatus, DurationMs)\n| where isempty(_service) or source in (_service) or target in (_service);\ncalls\n| summarize Calls=count(), Errors=countif(SpanStatus == \"STATUS_CODE_ERROR\"), P95Ms=percentile(DurationMs, 95)\n    by Caller=source, Callee=target\n| extend Hop=array_index_of(dynamic([\"gateway\", \"checkout\", \"inventory\", \"payment\", \"shipping\", \"notifications\", \"postgres\"]), Callee)\n| order by Hop asc\n| project Caller, Callee, CallsPerMinute=round(Calls / max_of(1.0, (_endTime - _startTime) / 1m), 1), ErrorPercent=round(100.0 * Errors / Calls, 2),\n    P95Ms=round(P95Ms, 1)\n| take 100",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service"
+      ]
+    },
+    {
+      "id": "87c6bc2a-b5ce-53b3-8a1b-c61671bde9f5",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let pasted_trace = tolower(trim(@\"\\s+\", _trace_lookup));\nOTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| summarize Start=min(StartTime), Finish=max(EndTime), Spans=count(), Roots=countif((isempty(ParentID) or ParentID == \"0000000000000000\")),\n    ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"), MatchingService=countif((isempty(_service) or Service in (_service))),\n    Root=take_anyif(strcat(Service, \" \", SpanName), (isempty(ParentID) or ParentID == \"0000000000000000\")), Services=make_set(Service, 16),\n    Ids=make_set(SpanID, 128), Parents=make_set_if(ParentID, not((isempty(ParentID) or ParentID == \"0000000000000000\")), 128)\n    by TraceID, Environment\n| where MatchingService > 0\n| extend DurationMs=round((Finish - Start) / 1ms, 1)\n| where isempty(pasted_trace) or TraceID == pasted_trace\n| where _trace_view != \"errors\" or ErrorSpans > 0\n| extend Rank=iff(_trace_view == \"slowest\", DurationMs, (Start - datetime(1970-01-01)) / 1ms)\n| top 100 by Rank desc\n| extend Hops=array_sort_asc(Services)\n| project Start, TraceID, Root=iff(isempty(Root), \"(root pending)\", Root), Status=iff(ErrorSpans > 0, \"Error\", \"OK\"),\n    DurationMs, Spans, Services=strcat_array(Hops, \", \"), Environment",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service",
+        "_trace_view",
+        "_trace_lookup"
+      ]
+    },
+    {
+      "id": "06b9ce4f-1090-5d87-a000-1c753e52932e",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let pasted_trace = tolower(trim(@\"\\s+\", _trace_lookup));\nlet selected_trace = iff(isempty(pasted_trace), _trace_id, pasted_trace);\nlet spans = materialize(OTELTraces\n| where StartTime between ((_startTime - 5m) .. (_endTime + 5m))\n| where TraceID == selected_trace\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), ParentID=iff(ParentID == \"0000000000000000\", \"\", ParentID)\n| take 500);\nlet t0 = toscalar(spans | summarize min(StartTime));\nlet traced = materialize(spans\n| extend P1=ParentID\n| lookup kind=leftouter (spans | project P1=SpanID, P2=ParentID) on P1\n| lookup kind=leftouter (spans | project P2=SpanID, P3=ParentID) on P2\n| lookup kind=leftouter (spans | project P3=SpanID, P4=ParentID) on P3\n| lookup kind=leftouter (spans | project P4=SpanID, P5=ParentID) on P4\n| lookup kind=leftouter (spans | project P5=SpanID, P6=ParentID) on P5\n| lookup kind=leftouter (spans | project P6=SpanID, P7=ParentID) on P6\n| lookup kind=leftouter (spans | project P7=SpanID, P8=ParentID) on P7\n| lookup kind=leftouter (spans | project P8=SpanID, P9=ParentID) on P8\n| lookup kind=leftouter (spans | project P9=SpanID, P10=ParentID) on P9\n| extend Depth=toint(isnotempty(P1)) + toint(isnotempty(P2)) + toint(isnotempty(P3)) + toint(isnotempty(P4)) + toint(isnotempty(P5)) + toint(isnotempty(P6)) + toint(isnotempty(P7)) + toint(isnotempty(P8)) + toint(isnotempty(P9)) + toint(isnotempty(P10))\n| project-away P1, P2, P3, P4, P5, P6, P7, P8, P9, P10\n| extend OffsetMs=round((StartTime - t0) / 1ms, 1), DurationMs=round((EndTime - StartTime) / 1ms, 1)\n| order by StartTime asc, Depth asc\n| extend Row=row_number() - 1);\ntraced\n| extend Op=replace_string(SpanName, \"demo.\", \"\"), Failed=SpanStatus == \"STATUS_CODE_ERROR\"\n| extend Label=strcat(iff(Depth > 0, \"└ \", \"\"), Service, iff(Op == Service, \"\", strcat(\" · \", Op)))\n| order by Label asc, Row asc\n| extend Nth=row_number(1, Label != prev(Label))\n| extend Span=iff(Nth > 1, strcat(Label, \" (\", Nth, \")\"), Label)\n| order by Row asc\n| project Span, [\"start offset (ms)\"]=OffsetMs, [\"span duration (ms)\"]=iff(Failed, 0.0, DurationMs),\n    [\"failed span duration (ms)\"]=iff(Failed, DurationMs, 0.0)",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_trace_id",
+        "_trace_lookup"
+      ]
+    },
+    {
+      "id": "b9aa35cd-6f59-5911-8f68-8b55d1cd4e93",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let pasted_trace = tolower(trim(@\"\\s+\", _trace_lookup));\nlet selected_trace = iff(isempty(pasted_trace), _trace_id, pasted_trace);\nlet spans = materialize(OTELTraces\n| where StartTime between ((_startTime - 5m) .. (_endTime + 5m))\n| where TraceID == selected_trace\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), ParentID=iff(ParentID == \"0000000000000000\", \"\", ParentID)\n| take 500);\nlet t0 = toscalar(spans | summarize min(StartTime));\nlet traced = materialize(spans\n| extend P1=ParentID\n| lookup kind=leftouter (spans | project P1=SpanID, P2=ParentID) on P1\n| lookup kind=leftouter (spans | project P2=SpanID, P3=ParentID) on P2\n| lookup kind=leftouter (spans | project P3=SpanID, P4=ParentID) on P3\n| lookup kind=leftouter (spans | project P4=SpanID, P5=ParentID) on P4\n| lookup kind=leftouter (spans | project P5=SpanID, P6=ParentID) on P5\n| lookup kind=leftouter (spans | project P6=SpanID, P7=ParentID) on P6\n| lookup kind=leftouter (spans | project P7=SpanID, P8=ParentID) on P7\n| lookup kind=leftouter (spans | project P8=SpanID, P9=ParentID) on P8\n| lookup kind=leftouter (spans | project P9=SpanID, P10=ParentID) on P9\n| extend Depth=toint(isnotempty(P1)) + toint(isnotempty(P2)) + toint(isnotempty(P3)) + toint(isnotempty(P4)) + toint(isnotempty(P5)) + toint(isnotempty(P6)) + toint(isnotempty(P7)) + toint(isnotempty(P8)) + toint(isnotempty(P9)) + toint(isnotempty(P10))\n| project-away P1, P2, P3, P4, P5, P6, P7, P8, P9, P10\n| extend OffsetMs=round((StartTime - t0) / 1ms, 1), DurationMs=round((EndTime - StartTime) / 1ms, 1)\n| order by StartTime asc, Depth asc\n| extend Row=row_number() - 1);\nlet span_logs = OTELLogs\n    | where Timestamp between ((_startTime - 5m) .. (_endTime + 5m))\n    | where TraceID == selected_trace\n    | summarize Logs=count() by SpanID;\ntraced\n| join kind=leftouter span_logs on SpanID\n| order by Row asc\n| project Span=strcat(strrep(\"\\u00a0\\u00a0\\u00a0\", Depth), iff(Depth > 0, \"└ \", \"\"), Service, \" · \", SpanName),\n    Kind=tolower(replace_string(SpanKind, \"SPAN_KIND_\", \"\")), StartOffsetMs=OffsetMs, DurationMs,\n    Status=iff(SpanStatus == \"STATUS_CODE_ERROR\", \"Error\", \"OK\"), StatusMessage=SpanStatusMessage,\n    Logs=coalesce(Logs, 0), Service, SpanID",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_trace_id",
+        "_trace_lookup"
+      ]
+    },
+    {
+      "id": "ba146a93-ec14-5da7-9d9c-64c307b23c36",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let pasted_trace = tolower(trim(@\"\\s+\", _trace_lookup));\nlet selected_trace = iff(isempty(pasted_trace), _trace_id, pasted_trace);\nOTELLogs\n| where Timestamp between ((_startTime - 5m) .. (_endTime + 5m))\n| where TraceID == selected_trace\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Scenario=tostring(LogsAttributes[\"demo.scenario\"]),\n    Outcome=tostring(LogsAttributes[\"outcome\"])\n| order by Timestamp asc\n| take 200\n| project Timestamp, Level=SeverityText, Service, Message=strcat(\"[\", Service, \"] \", Body, \" (\", Scenario, \", \", Outcome, \")\"), SpanID",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_trace_id",
+        "_trace_lookup"
+      ]
+    },
+    {
+      "id": "24e236d3-1e32-5d91-bb97-6d8115e28325",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let step = max_of(1m, bin((_endTime - _startTime) / 90, 1m));\nOTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| summarize Start=min(StartTime), Finish=max(EndTime), Spans=count(), Roots=countif((isempty(ParentID) or ParentID == \"0000000000000000\")),\n    ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"), MatchingService=countif((isempty(_service) or Service in (_service))),\n    Root=take_anyif(strcat(Service, \" \", SpanName), (isempty(ParentID) or ParentID == \"0000000000000000\")), Services=make_set(Service, 16),\n    Ids=make_set(SpanID, 128), Parents=make_set_if(ParentID, not((isempty(ParentID) or ParentID == \"0000000000000000\")), 128)\n    by TraceID, Environment\n| where MatchingService > 0\n| extend DurationMs=round((Finish - Start) / 1ms, 1)\n| summarize ok=round(countif(ErrorSpans == 0) / (step / 1m), 1), failed=round(countif(ErrorSpans > 0) / (step / 1m), 1)\n    by WindowStart=bin(Start, step)\n| order by WindowStart asc",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service"
+      ]
+    },
+    {
+      "id": "9f5b45ee-5ded-5fc4-addc-9f48ee35dc3b",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "724810aa-e11e-5bd8-9c94-b1b66aa65a59"
+      },
+      "text": "let spans = materialize(OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where (isempty(_environment) or Environment in (_environment))\n| project TraceID, SpanID, ParentID, Service, SpanName, DurationMs=(EndTime - StartTime) / 1ms);\nlet child_time = spans\n    | where not((isempty(ParentID) or ParentID == \"0000000000000000\"))\n    | summarize ChildMs=sum(DurationMs) by TraceID, SpanID=ParentID;\nspans\n| join kind=leftouter child_time on TraceID, SpanID\n| extend SelfMs=max_of(0.0, DurationMs - coalesce(ChildMs, 0.0))\n| where (isempty(_service) or Service in (_service))\n| summarize P95SelfMs=round(percentile(SelfMs, 95), 1) by Operation=strcat(Service, \" · \", SpanName)\n| top 10 by P95SelfMs desc",
+      "usedVariables": [
+        "_startTime",
+        "_endTime",
+        "_environment",
+        "_service"
+      ]
+    }
+  ],
+  "embeddedApps": []
+}

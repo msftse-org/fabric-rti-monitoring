@@ -1,0 +1,960 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_FABRIC",
+      "label": "Fabric Eventhouse",
+      "description": "Azure Data Explorer datasource configured for this demo KQL database",
+      "type": "datasource",
+      "pluginId": "grafana-azure-data-explorer-datasource",
+      "pluginName": "Azure Data Explorer Datasource"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "grafana-azure-data-explorer-datasource",
+      "name": "Azure Data Explorer Datasource",
+      "version": "4.6.1"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "nodeGraph",
+      "name": "nodeGraph",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "traces",
+      "name": "traces",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "logs",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "timeseries",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "bargauge",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "uid": "fabric-rti-traces",
+  "title": "Fabric RTI Traces",
+  "description": "Distributed traces from Fabric Eventhouse: find a trace, follow it span by span, and see how services call each other.",
+  "tags": [
+    "fabric-rti",
+    "traces",
+    "opentelemetry",
+    "synthetic"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Fabric RTI",
+      "type": "dashboards",
+      "tags": [
+        "fabric-rti"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "database",
+        "label": "KQL database",
+        "type": "textbox",
+        "query": "Observability",
+        "description": "Eventhouse KQL database that stores the OTEL tables.",
+        "current": {
+          "text": "Observability",
+          "value": "Observability"
+        },
+        "hide": 0
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "description": "",
+        "query": "All environments : all, AKS : aks, Container Apps job : demo",
+        "current": {
+          "text": "All environments",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All environments",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "AKS",
+            "value": "aks",
+            "selected": false
+          },
+          {
+            "text": "Container Apps job",
+            "value": "demo",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "description": "",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, postgres : postgres",
+        "current": {
+          "text": "All services",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All services",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "gateway",
+            "value": "gateway",
+            "selected": false
+          },
+          {
+            "text": "checkout",
+            "value": "checkout",
+            "selected": false
+          },
+          {
+            "text": "inventory",
+            "value": "inventory",
+            "selected": false
+          },
+          {
+            "text": "payment",
+            "value": "payment",
+            "selected": false
+          },
+          {
+            "text": "shipping",
+            "value": "shipping",
+            "selected": false
+          },
+          {
+            "text": "notifications",
+            "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "postgres",
+            "value": "postgres",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "trace_id",
+        "label": "Trace ID (blank = latest)",
+        "type": "textbox",
+        "query": "",
+        "description": "Leave blank for the newest settled multi-span trace, or click a TraceID in Find a trace.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      },
+      {
+        "name": "trace_view",
+        "label": "Show",
+        "type": "custom",
+        "description": "Order or filter the Find a trace table.",
+        "query": "Most recent : recent, Failed only : errors, Slowest first : slowest",
+        "current": {
+          "text": "Most recent",
+          "value": "recent"
+        },
+        "options": [
+          {
+            "text": "Most recent",
+            "value": "recent",
+            "selected": true
+          },
+          {
+            "text": "Failed only",
+            "value": "errors",
+            "selected": false
+          },
+          {
+            "text": "Slowest first",
+            "value": "slowest",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Trace summary",
+      "description": "Traces that touch the selected service in the time window. Counts include traces still being ingested.",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| summarize Start=min(StartTime), Finish=max(EndTime), Spans=count(),\n    ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"), MatchingService=countif(${service:singlequote} == \"all\" or Service == ${service:singlequote}) by TraceID\n| where MatchingService > 0\n| summarize Traces=count(), Failed=countif(ErrorSpans > 0),\n    P95DurationMs=percentile((Finish - Start) / 1ms, 95), SpansPerTrace=avg(Spans)\n| project Traces, FailedPercent=iff(Traces == 0, real(null), 100.0 * Failed / Traces), P95DurationMs, SpansPerTrace",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Traces"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Traces"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FailedPercent"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Failed traces"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95DurationMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95 trace duration"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500
+                    },
+                    {
+                      "color": "red",
+                      "value": 1000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SpansPerTrace"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Spans per trace"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      }
+    },
+    {
+      "id": 2,
+      "title": "Find a trace",
+      "description": "Up to 100 traces. Click a TraceID to open its waterfall or its logs. Use Show to list failed or slowest traces.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| summarize Start=min(StartTime), Finish=max(EndTime), Spans=count(),\n    ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"), Services=make_set(Service, 16),\n    Root=take_anyif(SpanName, isempty(ParentID) or ParentID == \"0000000000000000\"), MatchingService=countif(${service:singlequote} == \"all\" or Service == ${service:singlequote})\n    by TraceID, Environment\n| where MatchingService > 0\n| where ${trace_view:singlequote} != \"errors\" or ErrorSpans > 0\n| extend DurationMs=(Finish - Start) / 1ms\n| extend Rank=iff(${trace_view:singlequote} == \"slowest\", DurationMs, (Start - datetime(1970-01-01)) / 1ms)\n| top 100 by Rank desc\n| project Start, TraceID, Root=iff(isempty(Root), \"(root pending)\", Root), Status=iff(ErrorSpans > 0, \"Error\", \"OK\"),\n    DurationMs, Spans, Services=strcat_array(array_sort_asc(Services), \", \"), Environment",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TraceID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open trace waterfall",
+                    "url": "/d/fabric-rti-traces/fabric-rti-traces?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&var-service=${service:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open logs for this trace",
+                    "url": "/d/fabric-rti-logs/fabric-rti-logs?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 290
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Start"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Error": {
+                        "text": "Error",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "OK": {
+                        "text": "OK",
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DurationMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Duration"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500
+                    },
+                    {
+                      "color": "red",
+                      "value": 1000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Spans"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Service map",
+      "description": "Calls between services, derived from parent and child spans. Inside each node: p95 latency and requests per minute. The red arc is the error share. Click a node for details.",
+      "type": "nodeGraph",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "nodes",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let spans = materialize(OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| project TraceID, SpanID, ParentID, Service, SpanName, SpanKind, SpanStatus, DurationMs=(EndTime - StartTime) / 1ms);\nlet minutes = max_of(1.0, ($__timeTo - $__timeFrom) / 1m);\nlet calls = union\n    (spans\n    | where SpanKind == \"SPAN_KIND_SERVER\" and not(isempty(ParentID) or ParentID == \"0000000000000000\")\n    | join kind=inner (spans | project TraceID, ParentID=SpanID, Caller=Service) on TraceID, ParentID\n    | where Caller != Service\n    | project source=Caller, target=Service, SpanStatus, DurationMs),\n    (spans\n    | where SpanKind == \"SPAN_KIND_CLIENT\" and SpanName startswith \"demo.postgres\"\n    | project source=Service, target=\"postgres\", SpanStatus, DurationMs)\n| where ${service:singlequote} == \"all\" or source == ${service:singlequote} or target == ${service:singlequote};\nlet members = union (calls | project Node=source), (calls | project Node=target) | distinct Node;\nunion\n    (spans | where SpanKind == \"SPAN_KIND_SERVER\" | project Node=Service, Kind=\"service\", SpanStatus, DurationMs),\n    (spans | where SpanKind == \"SPAN_KIND_CLIENT\" and SpanName startswith \"demo.postgres\"\n        | project Node=\"postgres\", Kind=\"database\", SpanStatus, DurationMs)\n| where Node in (members) or ${service:singlequote} == \"all\" or Node == ${service:singlequote}\n| summarize Calls=count(), Errors=countif(SpanStatus == \"STATUS_CODE_ERROR\"), P95Ms=percentile(DurationMs, 95),\n    Kind=take_any(Kind) by Node\n| project id=Node, title=Node, subtitle=Kind, mainstat=strcat(tolong(round(P95Ms)), \" ms\"),\n    secondarystat=strcat(round(Calls / minutes, 1), \" req/min\"),\n    arc__failed=todouble(Errors) / Calls, arc__ok=1.0 - todouble(Errors) / Calls,\n    detail__requests=Calls, detail__error_percent=round(100.0 * Errors / Calls, 2)\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        },
+        {
+          "refId": "edges",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let spans = materialize(OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| project TraceID, SpanID, ParentID, Service, SpanName, SpanKind, SpanStatus, DurationMs=(EndTime - StartTime) / 1ms);\nlet minutes = max_of(1.0, ($__timeTo - $__timeFrom) / 1m);\nlet calls = union\n    (spans\n    | where SpanKind == \"SPAN_KIND_SERVER\" and not(isempty(ParentID) or ParentID == \"0000000000000000\")\n    | join kind=inner (spans | project TraceID, ParentID=SpanID, Caller=Service) on TraceID, ParentID\n    | where Caller != Service\n    | project source=Caller, target=Service, SpanStatus, DurationMs),\n    (spans\n    | where SpanKind == \"SPAN_KIND_CLIENT\" and SpanName startswith \"demo.postgres\"\n    | project source=Service, target=\"postgres\", SpanStatus, DurationMs)\n| where ${service:singlequote} == \"all\" or source == ${service:singlequote} or target == ${service:singlequote};\ncalls\n| summarize Calls=count(), Errors=countif(SpanStatus == \"STATUS_CODE_ERROR\"), P95Ms=percentile(DurationMs, 95)\n    by source, target\n| project id=strcat(source, \"->\", target), source, target, mainstat=strcat(tolong(round(P95Ms)), \" ms p95\"),\n    secondarystat=strcat(round(Calls / minutes, 1), \" calls/min\"),\n    detail__calls=Calls, detail__error_percent=round(100.0 * Errors / Calls, 2)\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "nodes": {
+          "arcs": [
+            {
+              "field": "arc__failed",
+              "color": "red"
+            },
+            {
+              "field": "arc__ok",
+              "color": "green"
+            }
+          ]
+        },
+        "edges": {},
+        "zoomMode": "cooperative",
+        "layoutAlgorithm": "layered"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "mainstat": "p95 latency",
+              "secondarystat": "Throughput",
+              "arc__failed": "Failed share",
+              "arc__ok": "OK share",
+              "detail__requests": "Requests",
+              "detail__calls": "Calls",
+              "detail__error_percent": "Error %"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Trace waterfall",
+      "description": "Every span of the selected trace on a timeline. Blank Trace ID shows the newest settled multi-span trace (at least a minute old, no missing parents). Expand a span for its attributes, resource and correlated logs.",
+      "type": "traces",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 17
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let requested_trace = ${trace_id:singlequote};\nlet windowed = materialize(OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote});\nlet latest_trace = toscalar(windowed\n    | summarize First=min(StartTime), Spans=count(), Roots=countif(isempty(ParentID) or ParentID == \"0000000000000000\"),\n        Ids=make_set(SpanID, 128), Parents=make_set_if(ParentID, not(isempty(ParentID) or ParentID == \"0000000000000000\"), 128),\n        MatchingService=countif(${service:singlequote} == \"all\" or Service == ${service:singlequote}) by TraceID\n    | where First < ago(1m) and Roots > 0 and Spans > 1 and MatchingService > 0\n    | where array_length(set_difference(Parents, Ids)) == 0\n    | top 1 by First desc\n    | project TraceID);\nlet selected_trace = iff(isempty(requested_trace) or requested_trace == \"latest\", latest_trace, requested_trace);\nlet span_logs = OTELLogs\n    | where $__timeFilter(Timestamp)\n    | where TraceID == selected_trace\n    | summarize logs=make_list(bag_pack(\"timestamp\", tolong((Timestamp - datetime(1970-01-01)) / 1ms),\n        \"fields\", bag_pack(\"level\", tolower(SeverityText), \"message\", Body,\n            \"outcome\", tostring(LogsAttributes[\"outcome\"])))) by SpanID;\nwindowed\n| where TraceID == selected_trace\n| join kind=leftouter span_logs on SpanID\n| project traceID=TraceID, spanID=SpanID, parentSpanID=iff(ParentID == \"0000000000000000\", \"\", ParentID),\n    operationName=SpanName, serviceName=Service,\n    serviceTags=bag_remove_keys(ResourceAttributes, dynamic([\"service.name\"])),\n    startTime=(StartTime - datetime(1970-01-01)) / 1ms, duration=(EndTime - StartTime) / 1ms,\n    tags=TraceAttributes, logs=coalesce(logs, dynamic([])),\n    [\"kind\"]=tolower(replace_string(SpanKind, \"SPAN_KIND_\", \"\")),\n    statusCode=case(SpanStatus == \"STATUS_CODE_ERROR\", 2, SpanStatus == \"STATUS_CODE_OK\", 1, 0),\n    statusMessage=SpanStatusMessage\n| order by startTime asc\n| take 200",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "trace"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {}
+    },
+    {
+      "id": 5,
+      "title": "Logs in this trace",
+      "description": "Log records that carry the selected trace ID, in time order. Logs can arrive a little after their spans.",
+      "type": "logs",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let requested_trace = ${trace_id:singlequote};\nlet windowed = materialize(OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote});\nlet latest_trace = toscalar(windowed\n    | summarize First=min(StartTime), Spans=count(), Roots=countif(isempty(ParentID) or ParentID == \"0000000000000000\"),\n        Ids=make_set(SpanID, 128), Parents=make_set_if(ParentID, not(isempty(ParentID) or ParentID == \"0000000000000000\"), 128),\n        MatchingService=countif(${service:singlequote} == \"all\" or Service == ${service:singlequote}) by TraceID\n    | where First < ago(1m) and Roots > 0 and Spans > 1 and MatchingService > 0\n    | where array_length(set_difference(Parents, Ids)) == 0\n    | top 1 by First desc\n    | project TraceID);\nlet selected_trace = iff(isempty(requested_trace) or requested_trace == \"latest\", latest_trace, requested_trace);\nOTELLogs\n| where $__timeFilter(Timestamp)\n| where TraceID == selected_trace\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Scenario=tostring(LogsAttributes[\"demo.scenario\"]),\n    Outcome=tostring(LogsAttributes[\"outcome\"])\n| project Timestamp, Line=strcat(\"[\", Service, \"] \", Body, \" (\", Scenario, \", \", Outcome, \")\"), level=tolower(SeverityText), Service, SpanID, TraceID\n| order by Timestamp asc\n| take 200",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "logs"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Ascending"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Traces per minute",
+      "description": "Traces by start minute, split into OK and failed (any span in error).",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| summarize Start=min(StartTime), ErrorSpans=countif(SpanStatus == \"STATUS_CODE_ERROR\"),\n    MatchingService=countif(${service:singlequote} == \"all\" or Service == ${service:singlequote}) by TraceID, Environment\n| where MatchingService > 0\n| summarize Traces=count() by WindowStart=bin(Start, 1m), Environment, Outcome=iff(ErrorSpans > 0, \"failed\", \"ok\")\n| project WindowStart, Traces, Series=strcat(Environment, \" / \", Outcome)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ (error|failed)$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ (success|ok|info)$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Where time goes - p95 self time",
+      "description": "Time spent inside each operation, excluding its child spans. The longest bars are the bottlenecks.",
+      "type": "bargauge",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let spans = materialize(OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| project TraceID, SpanID, ParentID, Service, SpanName, DurationMs=(EndTime - StartTime) / 1ms);\nlet child_time = spans\n    | where not(isempty(ParentID) or ParentID == \"0000000000000000\")\n    | summarize ChildMs=sum(DurationMs) by TraceID, SpanID=ParentID;\nspans\n| join kind=leftouter child_time on TraceID, SpanID\n| extend SelfMs=max_of(0.0, DurationMs - coalesce(ChildMs, 0.0))\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| summarize P95SelfMs=percentile(SelfMs, 95) by Operation=strcat(Service, \" / \", SpanName)\n| top 10 by P95SelfMs desc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 300
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": true,
+          "calcs": [],
+          "fields": "/^P95SelfMs$/"
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "color",
+        "sizing": "auto"
+      }
+    }
+  ]
+}

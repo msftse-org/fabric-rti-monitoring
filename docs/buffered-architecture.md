@@ -8,8 +8,9 @@ work.
 
 The repository's primary deployment uses the direct collector-to-Eventhouse
 exporter. The buffered profile is an architectural extension. A standalone Bicep
-template provides its Azure broker foundation; the remaining integration is
-described below and is not implemented or verified end to end.
+template and an optional Terraform module provide its Azure broker foundation;
+the remaining integration is described below and is not implemented or verified
+end to end.
 
 ![Optional target architecture: Azure-hosted synthetic services and a collector send OTLP JSON through Event Hubs and Fabric Eventstream to raw and typed tables, materialized views and dashboards.](assets/buffered-architecture.png)
 
@@ -19,12 +20,12 @@ described below and is not implemented or verified end to end.
 | --- | --- |
 | Azure synthetic producer with four correlated services | Implemented in the primary sample. The current 60-request job produces 240 spans, 60 logs and 120 metric points. |
 | Collector directly exporting to Eventhouse; typed `OTEL*` tables; minute materialized views; Grafana | Implemented in the primary sample, with offline validation. Cloud acceptance remains a deployment step. |
-| Event Hubs Standard namespace, hub, consumer group and managed identity role assignments | Provided by [`infra/optional/event-hubs.bicep`](../infra/optional/event-hubs.bicep); compiled offline. Not deployed by `infra/main.bicep`. |
+| Event Hubs Standard namespace, hub, consumer group and managed identity role assignments | Provided by [`infra/optional/event-hubs.bicep`](../infra/optional/event-hubs.bicep) and the opt-in [Terraform module](../infra/terraform/modules/event_hubs/). Not deployed by `infra/main.bicep`. |
 | Collector Kafka exporter sending OTLP JSON with managed identity | Design target. No Kafka exporter configuration is supplied or activated. |
-| Fabric workspace identity, Event Hubs connection and Eventstream | Design target requiring separate Fabric setup. Not created by the primary bootstrap or the optional Bicep template. |
+| Fabric workspace identity, Event Hubs connection and Eventstream | Design target requiring separate Fabric setup. Not created by the primary bootstrap or either broker IaC option. |
 | `CollectorRaw` bronze table and transactional update policies | Design target. No table, parsing functions or policies for this profile are supplied. |
 | Replay-safe deduplication and metric exemplars | Design target. The primary sample does not implement these capabilities. |
-| Native Fabric Real-Time Dashboard | Optional presentation target. No dashboard item or native dashboard definition is provisioned. |
+| Native Fabric Real-Time Dashboards | Implemented as optional definitions in [`fabric/dashboards/`](../fabric/dashboards/), deployed by [`scripts/deploy-fabric-dashboard.py`](../scripts/deploy-fabric-dashboard.py). They read the direct-profile tables; no buffered-profile tiles are defined. |
 
 Deploying the broker alone does not send telemetry through it, create Fabric
 items or change the primary sample's exporter.
@@ -123,10 +124,13 @@ does not emit exemplars. See [OpenTelemetry exemplars](https://opentelemetry.io/
 ### Serve either dashboard surface
 
 KQL serving functions can expose the deduplicated and aggregated contracts to
-Grafana or a native Fabric Real-Time Dashboard. The native dashboard is an
-optional Fabric item, separate from the Eventhouse and Eventstream. Its data
-source, permissions, queries and drill-through navigation require their own
-definition and acceptance checks. See [Real-Time Dashboards](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/dashboard-real-time-create).
+Grafana or the three native Fabric Real-Time Dashboards. The primary sample
+ships both for the direct profile; see
+[Publish the Fabric Real-Time Dashboards](deployment.md#9-publish-the-fabric-real-time-dashboards-optional).
+For the buffered profile, each dashboard remains a separate Fabric item from
+the Eventhouse and Eventstream. Its data source, permissions, queries, and
+navigation links would need revised definitions and acceptance checks against
+the deduplicated tables. See [Real-Time Dashboards](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/dashboard-real-time-create).
 
 ## Identity boundaries
 
@@ -143,6 +147,9 @@ the correct UUID type is required even though both have the same textual form.
 See [Event Hubs data roles and scope](https://learn.microsoft.com/en-us/azure/event-hubs/authorize-access-azure-active-directory).
 
 ## Deploy only the broker foundation
+
+For Terraform, use the [optional broker inputs](terraform-deployment.md#optional-event-hubs-foundation)
+in the main root. The following commands describe the standalone Bicep option.
 
 First complete the identity foundation from the
 [primary deployment guide](deployment.md). In Fabric **Workspace settings >

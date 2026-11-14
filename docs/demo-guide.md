@@ -1,7 +1,8 @@
 # Guided demonstration
 
 Use this sequence after [deploying the cloud building blocks](deployment.md).
-Prepare the Fabric KQL query tab, the Grafana dashboard, and the architecture image
+Prepare the Fabric KQL query tab, the Grafana dashboards (or the Fabric Real-Time
+Dashboard), and the architecture image
 before the session. Show only the dedicated synthetic workspace.
 
 ## 1. Explain the interfaces
@@ -50,14 +51,31 @@ storage, and that actual query performance must be measured for the workload.
 
 ## 5. Move from overview to an individual request
 
-In Grafana, select the recent time range. Walk through request counts, error
-counts, approximate latency percentiles, gauge statistics, and recent logs.
-Select a trace ID from the log table or paste it into the **Trace ID** field.
-The detail panel shows the root and its three descendants with their service,
-duration, parent relationships, run ID, and status.
+Open **Fabric RTI Metrics** in Grafana or Fabric. Select the recent time range.
+Choose **Environment =
+Container Apps job** for the bounded producer, or **AKS** for the continuous
+six-microservice demo. Per-service request counts, error rates, p95 latency, and
+service health distinguish each hop from the root-only gateway rollups.
 
-The dashboard provides a bounded span table. It is not a full trace waterfall UI
-or service map. Those are possible additions when introducing a workload.
+Open **Fabric RTI Traces**. **Find a trace** lists recent, failed, or slowest
+requests. With a blank **Trace ID**, the waterfall shows the newest complete
+multi-span trace. Select a TraceID in **Find a trace** to draw that request. To
+follow a TraceID found in **Fabric RTI Logs**, copy it into the Traces dashboard's
+**Trace ID** parameter. In Grafana, the service map shows caller-to-callee edges
+with their traffic and latency, and highlights services with elevated error
+rates. Fabric shows the same hops in **Calls by dependency**, a stacked bar
+chart of successful and failed calls per minute, beside **Service dependencies**
+with error rates and p95 latency.
+
+The waterfall nests each span under its parent and shows its service, offset,
+duration, and status. In Grafana, each span's logs appear beside it. In Fabric,
+each bar starts at its span's offset and failed spans are red; **Spans in this
+trace** lists status, duration, and the number of logs per span, and **Logs in
+this trace** lists the logs. The manual job has four
+spans. A successful AKS checkout has seven spans across gateway, checkout,
+inventory, payment, shipping, and notifications, including payment's simulated
+database call. Use **Logs** to search lines, filter by severity, and open a
+failed request's trace from **Latest errors**.
 
 ## 6. Explain an idle period
 

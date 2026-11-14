@@ -33,18 +33,18 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def azure_cli_token():
+def azure_cli_token(resource="https://api.fabric.microsoft.com"):
     try:
         result = subprocess.run(
             ["az", "account", "get-access-token", "--resource",
-             "https://api.fabric.microsoft.com", "--query", "accessToken", "-o", "tsv"],
+             resource, "--query", "accessToken", "-o", "tsv"],
             check=True, capture_output=True, text=True,
         )
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise FabricError("Cannot obtain a Fabric token. Sign in with Azure CLI in the correct tenant and verify Fabric API permissions.") from exc
+        raise FabricError("Cannot obtain an access token. Sign in with Azure CLI in the correct tenant and verify service permissions.") from exc
     token = result.stdout.strip()
     if not token:
-        raise FabricError("Azure CLI returned no Fabric access token.")
+        raise FabricError("Azure CLI returned no access token.")
     return token
 
 
@@ -64,12 +64,62 @@ def delay_seconds(headers):
         return 5
 
 
+def trusted_operation_url(location):
+    try:
+        return validate_api_url(location)
+    except FabricError:
+        parsed = urllib.parse.urlsplit(location)
+        match = re.fullmatch(r"/v1/operations/([0-9A-Fa-f-]{36})", parsed.path)
+        if (parsed.scheme != "https" or not parsed.hostname or parsed.username
+                or parsed.password or parsed.query or parsed.fragment or not match):
+            raise
+        # Fabric can return a regional operation URL. Rebind its validated ID
+        # to the API host so the bearer token never goes to the redirect host.
+        operation_id = uuid.UUID(match.group(1))
+        return validate_api_url(API_ROOT + "/operations/" + str(operation_id))
+
+
+def kusto_management_url(query_service_uri):
+    parsed = urllib.parse.urlsplit(query_service_uri)
+    if (parsed.scheme != "https" or not parsed.hostname
+            or not parsed.hostname.lower().endswith(".kusto.fabric.microsoft.com")
+            or parsed.username or parsed.password or parsed.query or parsed.fragment
+            or parsed.port not in (None, 443)):
+        raise FabricError("Refusing a Kusto management endpoint outside the Fabric query service.")
+    return query_service_uri.rstrip("/") + "/v1/rest/mgmt"
+
+
 class FabricClient:
-    def __init__(self, token_provider=azure_cli_token, opener=None, sleep=time.sleep, clock=time.monotonic):
+    def __init__(self, token_provider=azure_cli_token, opener=None, sleep=time.sleep, clock=time.monotonic,
+                 kusto_token_provider=None):
         self.token_provider = token_provider
+        self.kusto_token_provider = kusto_token_provider or (
+            lambda: azure_cli_token("https://kusto.kusto.windows.net")
+        )
         self.opener = opener or urllib.request.build_opener(NoRedirect)
         self.sleep = sleep
         self.clock = clock
+
+    def execute_schema_commands(self, query_service_uri, database_name, commands):
+        url = kusto_management_url(query_service_uri)
+        for command in commands:
+            request = urllib.request.Request(
+                url, data=json.dumps({"db": database_name, "csl": command}).encode(),
+                method="POST", headers={
+                    "Authorization": "Bearer " + self.kusto_token_provider(),
+                    "Content-Type": "application/json; charset=utf-8",
+                    "Accept": "application/json",
+                },
+            )
+            try:
+                with self.opener.open(request, timeout=60) as response:
+                    response.read()
+            except urllib.error.HTTPError as exc:
+                exc.close()
+                command_name = command.splitlines()[0][:120]
+                raise FabricError(f"Kusto rejected schema command {command_name!r} (HTTP {exc.code}).") from exc
+            except urllib.error.URLError as exc:
+                raise FabricError("Cannot reach the Fabric Kusto endpoint. Check database permissions and connectivity.") from exc
 
     def request(self, method, path, body=None):
         url = validate_api_url(path)
@@ -99,7 +149,8 @@ class FabricClient:
                     exc.close()
                 if not re.fullmatch(r"[A-Za-z0-9_.-]{1,120}", str(error_code)):
                     error_code = "UnknownError"
-                raise FabricError(f"Fabric HTTP {exc.code} ({error_code}); check tenant permissions, capacity state and API prerequisites.") from exc
+                path = urllib.parse.urlsplit(url).path
+                raise FabricError(f"Fabric HTTP {exc.code} ({error_code}) for {method} {path}; check tenant permissions, capacity state and API prerequisites.") from exc
             except urllib.error.URLError as exc:
                 raise FabricError("Cannot reach the Fabric API. Check connectivity and retry; existing items can be reused.") from exc
 
@@ -126,7 +177,7 @@ class FabricClient:
             if not operation_id:
                 raise FabricError("Fabric accepted the request without an operation URL. Inspect the workspace before retrying.")
             operation_url = API_ROOT + "/operations/" + str(uuid.UUID(operation_id))
-        operation_url = validate_api_url(operation_url)
+        operation_url = trusted_operation_url(operation_url)
         deadline = self.clock() + 900
         while self.clock() < deadline:
             self.sleep(delay_seconds(headers))
@@ -138,12 +189,21 @@ class FabricClient:
                     return payload
                 return {}
             if state in ("Failed", "Cancelled", "Canceled"):
-                raise FabricError(f"Fabric operation {state}. Inspect the Fabric portal and retry after resolving the cause.")
+                error = operation.get("error") or {}
+                error_code = error.get("errorCode", "UnknownError")
+                if not re.fullmatch(r"[A-Za-z0-9_.-]{1,120}", str(error_code)):
+                    error_code = "UnknownError"
+                raise FabricError(f"Fabric operation {state} ({error_code}). Inspect the Fabric portal and retry after resolving the cause.")
         raise FabricError("Fabric operation did not finish within 15 minutes. Inspect the workspace before retrying.")
 
 
-def unique_named(items, display_name):
-    matches = [item for item in items if item.get("displayName") == display_name]
+def unique_named(items, display_name, case_sensitive=True):
+    if case_sensitive:
+        matches = [item for item in items if item.get("displayName") == display_name]
+    else:
+        matches = [item for item in items
+                   if isinstance(item.get("displayName"), str)
+                   and item["displayName"].casefold() == display_name.casefold()]
     if len(matches) > 1:
         raise FabricError(f"More than one accessible item is named {display_name!r}; use unique names or --workspace-id.")
     return matches[0] if matches else None
@@ -166,7 +226,37 @@ def database_definition(eventhouse_id, schema):
     ]}
 
 
+def split_schema_commands(schema):
+    commands = []
+    current = []
+    for line in schema.splitlines():
+        command = line.strip()
+        if not command or command.startswith("//"):
+            continue
+        if command.startswith("."):
+            if current:
+                commands.append("\n".join(current))
+            current = [command]
+        elif current:
+            current.append(line.rstrip())
+        else:
+            raise FabricError("Schema content must start with a Kusto management command.")
+    if current:
+        commands.append("\n".join(current))
+    return commands
+
+
 def bootstrap(client, args, schema):
+    schema_commands = split_schema_commands(schema)
+    # Seed a newly created database with one supported item-definition command.
+    # Apply the complete versioned schema through the Kusto management endpoint.
+    initial_table = next(
+        (command for command in schema_commands if command.startswith(".create-merge table ")),
+        None,
+    )
+    if not initial_table:
+        raise FabricError("Schema must define at least one table before it can be applied.")
+
     if args.workspace_id:
         _, _, workspace = client.request("GET", "/workspaces/" + args.workspace_id)
         existing_workspace = True
@@ -187,6 +277,7 @@ def bootstrap(client, args, schema):
     base = "/workspaces/" + workspace_id
 
     eventhouse = unique_named(client.list_all(base + "/eventhouses"), args.eventhouse_name)
+    eventhouse_created = eventhouse is None
     if eventhouse is None:
         eventhouse = client.mutate("POST", base + "/eventhouses", {
             "displayName": args.eventhouse_name,
@@ -194,9 +285,13 @@ def bootstrap(client, args, schema):
             "creationPayload": {"minimumConsumptionUnits": 0},
         }, result=True)
 
-    database = unique_named(client.list_all(base + "/kqlDatabases"), args.database_name)
-    definition = database_definition(eventhouse["id"], schema)
+    databases = client.list_all(base + "/kqlDatabases")
+    database = unique_named(databases, args.database_name, case_sensitive=False)
+    definition = database_definition(eventhouse["id"], initial_table)
     updated_existing_database = False
+    database_created = database is None
+    apply_schema = eventhouse_created or database_created
+    existing_database = not apply_schema
     if database is None:
         database = client.mutate("POST", base + "/kqlDatabases", {
             "displayName": args.database_name,
@@ -208,8 +303,7 @@ def bootstrap(client, args, schema):
         if database.get("properties", {}).get("parentEventhouseItemId") != eventhouse["id"]:
             raise FabricError("Existing database belongs to another Eventhouse; choose a unique database name.")
         if args.update_schema:
-            client.mutate("POST", base + "/kqlDatabases/" + database["id"] + "/updateDefinition", {"definition": definition})
-            updated_existing_database = True
+            apply_schema = True
 
     if args.grafana_principal_id:
         roles = client.list_all(base + "/roleAssignments")
@@ -227,6 +321,9 @@ def bootstrap(client, args, schema):
     properties = database.get("properties", {})
     if not properties.get("queryServiceUri"):
         raise FabricError("The database exists but its query endpoint is not available yet. Wait for provisioning, then rerun to reuse the existing items.")
+    if apply_schema:
+        client.execute_schema_commands(properties["queryServiceUri"], database["displayName"], schema_commands)
+        updated_existing_database = existing_database
     return {
         "workspaceId": workspace_id,
         "eventhouseId": eventhouse["id"],

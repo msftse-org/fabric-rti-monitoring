@@ -1,0 +1,54 @@
+:root {
+  color-scheme: dark;
+
+  --bg: #1c1c1c;
+  --bg-head: #1f1f1f;
+  --bg-deep: #1a1a1b;
+  --panel: #262628;
+  --panel-raised: #2d2d30;
+  --input: #262628;
+  --select: #383838;
+  --border: #38383b;
+  --border-soft: #2f2f32;
+  --hover: #2f2f32;
+
+  --text: #ececee;
+  --text-muted: #a4a4aa;
+  --text-dim: #7c7c83;
+
+  --accent: #3ec183;
+  --accent-bright: #3ec183;
+  --accent-soft: #163b2a;
+  --run: #0a9a4f;
+  --run-hover: #0db25b;
+  --selected-row: #152f1f;
+  --error-row: #3a1517;
+  --link: #6fd4a5;
+
+  --crit-bar: #b1234f;
+  --warn-bar: #e1bc4f;
+  --ok-bar: #44ab72;
+
+  --chip-ok-bg: #244133;
+  --chip-ok-fg: #5fd6a0;
+  --chip-bad-bg: #482c2e;
+  --chip-bad-fg: #ef7a77;
+  --chip-warn-bg: #493d23;
+  --chip-warn-fg: #e8c34f;
+  --chip-info-bg: #1f3a45;
+  --chip-info-fg: #63c6de;
+  --chip-neutral-bg: #3a3a3e;
+  --chip-neutral-fg: #cfcfd4;
+
+  --slo-ok: #033017;
+  --slo-bad: #450a0c;
+
+  --font: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --rail-w: 64px;
+  --topbar-h: 44px;
+  --footer-h: 26px;
+  --radius: 6px;
+  --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}

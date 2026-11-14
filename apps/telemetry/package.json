@@ -1,0 +1,13 @@
+{
+  "name": "@rti-mock/telemetry",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Read-only telemetry API, snapshot exporter and shared client for the mock observability apps.",
+  "scripts": {
+    "api": "node server.mjs",
+    "snapshot": "node snapshot.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "license": "MIT"
+}

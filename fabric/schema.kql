@@ -1,5 +1,5 @@
 // Run management commands against the Observability database, not a query tab
-// connected to another database. Bootstrap submits the full database definition.
+// connected to another database. Bootstrap applies these through Kusto management.
 // Column contract: OpenTelemetry Collector Contrib azuredataexplorer exporter
 // v0.141.0 (Apache-2.0). See THIRD_PARTY_NOTICES.md and upstream README:
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.141.0/exporter/azuredataexplorerexporter
@@ -60,13 +60,7 @@
     | summarize SampleCount=count(), ValueSum=sum(MetricValue), ValueMin=min(MetricValue), ValueMax=max(MetricValue) by WindowStart=bin(Timestamp, 1m), Service, Environment, MetricName, MetricType, MetricUnit
 }
 
-// Rollups retain aggregate history after seven-day raw detail expires.
-.alter materialized-view Logs1m policy retention softdelete = 30d
-
-.alter materialized-view Requests1m policy retention softdelete = 30d
-
-.alter materialized-view Metrics1m policy retention softdelete = 30d
-
+// Eventhouse applies its default retention to materialized views.
 .alter materialized-view Logs1m policy caching hot = 1d
 
 .alter materialized-view Requests1m policy caching hot = 1d

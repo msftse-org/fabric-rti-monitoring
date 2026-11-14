@@ -1,0 +1,68 @@
+{{- if .Values.loadgen.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/name: loadgen
+    app.kubernetes.io/component: loadgen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: loadgen
+  template:
+    metadata:
+      labels:
+        {{- include "otel-demo.labels" . | nindent 8 }}
+        app.kubernetes.io/name: loadgen
+        app.kubernetes.io/component: loadgen
+      annotations:
+        checksum/code: {{ .Files.Get "files/loadgen.py" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        {{- include "otel-demo.podSecurity" . | nindent 8 }}
+      containers:
+        # Standard library only, so no dependency install step.
+        - name: loadgen
+          image: {{ .Values.images.python }}
+          imagePullPolicy: {{ .Values.images.pullPolicy }}
+          command: ["python", "/app/loadgen.py"]
+          env:
+            {{- include "otel-demo.pythonEnv" . | nindent 12 }}
+            - name: TARGET_URL
+              value: http://gateway:8080
+            - name: REQUESTS_PER_SECOND
+              value: {{ .Values.loadgen.requestsPerSecond | quote }}
+            - name: CHECKOUT_RATIO
+              value: {{ .Values.loadgen.checkoutRatio | quote }}
+            - name: RUN_ID_ROTATION_SECONDS
+              value: {{ .Values.loadgen.runIdRotationSeconds | quote }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          securityContext:
+            {{- include "otel-demo.containerSecurity" . | nindent 12 }}
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: code
+          configMap:
+            name: shop-code
+            items:
+              - key: loadgen.py
+                path: loadgen.py
+        - name: tmp
+          emptyDir:
+            sizeLimit: 16Mi
+{{- end }}

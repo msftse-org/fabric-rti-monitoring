@@ -1,0 +1,17 @@
+{
+  "name": "@rti-mock/rti-oncall-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@microsoft/rayfin-client": "1.36.2",
+    "@microsoft/rayfin-auth-provider-fabric": "1.36.2"
+  },
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "build:fabric": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5184 --strictPort"
+  }
+}

@@ -1,0 +1,8 @@
+host.json
+local.settings.json
+deploymetadata.json
+runtimemetadata.json
+dist/
+*.tsbuildinfo
+bin/
+obj/

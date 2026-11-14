@@ -1,0 +1,1039 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_FABRIC",
+      "label": "Fabric Eventhouse",
+      "description": "Azure Data Explorer datasource configured for this demo KQL database",
+      "type": "datasource",
+      "pluginId": "grafana-azure-data-explorer-datasource",
+      "pluginName": "Azure Data Explorer Datasource"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "grafana-azure-data-explorer-datasource",
+      "name": "Azure Data Explorer Datasource",
+      "version": "4.6.1"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "timeseries",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "logs",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "bargauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "table",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "uid": "fabric-rti-logs",
+  "title": "Fabric RTI Logs",
+  "description": "OpenTelemetry log records from every microservice, with volume, errors and a searchable stream linked to traces.",
+  "tags": [
+    "fabric-rti",
+    "logs",
+    "opentelemetry",
+    "synthetic"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Fabric RTI",
+      "type": "dashboards",
+      "tags": [
+        "fabric-rti"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "database",
+        "label": "KQL database",
+        "type": "textbox",
+        "query": "Observability",
+        "description": "Eventhouse KQL database that stores the OTEL tables.",
+        "current": {
+          "text": "Observability",
+          "value": "Observability"
+        },
+        "hide": 0
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "description": "",
+        "query": "All environments : all, AKS : aks, Container Apps job : demo",
+        "current": {
+          "text": "All environments",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All environments",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "AKS",
+            "value": "aks",
+            "selected": false
+          },
+          {
+            "text": "Container Apps job",
+            "value": "demo",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "description": "",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, postgres : postgres",
+        "current": {
+          "text": "All services",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All services",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "gateway",
+            "value": "gateway",
+            "selected": false
+          },
+          {
+            "text": "checkout",
+            "value": "checkout",
+            "selected": false
+          },
+          {
+            "text": "inventory",
+            "value": "inventory",
+            "selected": false
+          },
+          {
+            "text": "payment",
+            "value": "payment",
+            "selected": false
+          },
+          {
+            "text": "shipping",
+            "value": "shipping",
+            "selected": false
+          },
+          {
+            "text": "notifications",
+            "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "postgres",
+            "value": "postgres",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "severity",
+        "label": "Severity",
+        "type": "custom",
+        "description": "Filters the stream and breakdown.",
+        "query": "All severities : all, Error : ERROR, Info : INFO",
+        "current": {
+          "text": "All severities",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All severities",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "Error",
+            "value": "ERROR",
+            "selected": false
+          },
+          {
+            "text": "Info",
+            "value": "INFO",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "search",
+        "label": "Search",
+        "type": "textbox",
+        "query": "",
+        "description": "Text in the log line (service, message, scenario, outcome) or an exact trace ID.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      },
+      {
+        "name": "trace_id",
+        "label": "Trace ID",
+        "type": "textbox",
+        "query": "",
+        "description": "Show only logs of one trace. Set automatically from the Traces dashboard.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Log summary",
+      "description": "All log records for the selected environment and service. Severity, search and trace filters apply to the stream and breakdown only.",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let minutes = max_of(1.0, ($__timeTo - $__timeFrom) / 1m);\nOTELLogs\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Scenario=tostring(LogsAttributes[\"demo.scenario\"]), Outcome=tostring(LogsAttributes[\"outcome\"])\n| summarize Lines=count(), Errors=countif(SeverityNumber >= 17), Services=dcount(Service), Newest=max(Timestamp)\n| project LinesPerMinute=Lines / minutes, ErrorLines=Errors,\n    ErrorPercent=iff(Lines == 0, real(null), 100.0 * Errors / Lines), Services, NewestLogAgeSeconds=(now() - Newest) / 1s",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LinesPerMinute"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Lines / min"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: lines/min"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ErrorLines"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error lines"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ErrorPercent"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error share"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Services"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Services logging"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "NewestLogAgeSeconds"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Newest log age"
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 120
+                    },
+                    {
+                      "color": "red",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      }
+    },
+    {
+      "id": 2,
+      "title": "Log volume by severity",
+      "description": "Lines per minute from the Logs1m materialized view. Error means severity ERROR or higher.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let volume = LogsOverview(30d)\n| where $__timeFilter(WindowStart)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| summarize Info=sum(LogCount - ErrorCount), Error=sum(ErrorCount) by WindowStart, Environment;\nunion\n    (volume | project WindowStart, Lines=Info, Series=strcat(Environment, \" / info\")),\n    (volume | project WindowStart, Lines=Error, Series=strcat(Environment, \" / error\"))\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ (error|failed)$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ (success|ok|info)$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Log volume by service",
+      "description": "Lines per minute per service from the Logs1m materialized view.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "LogsOverview(30d)\n| where $__timeFilter(WindowStart)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| project WindowStart, Lines=LogCount, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Log stream",
+      "description": "Newest 200 records matching every filter. Expand a line for its fields, including the TraceID. To open a trace, use Latest errors below or paste the ID into the Traces dashboard.",
+      "type": "logs",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 16
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELLogs\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Scenario=tostring(LogsAttributes[\"demo.scenario\"]), Outcome=tostring(LogsAttributes[\"outcome\"])\n| where ${severity:singlequote} == \"all\" or SeverityText == ${severity:singlequote}\n| where isempty(${trace_id:singlequote}) or TraceID == ${trace_id:singlequote}\n| extend Line=strcat(\"[\", Service, \"] \", Body, \" (\", Scenario, \", \", Outcome, \")\")\n| where isempty(${search:singlequote}) or Line contains ${search:singlequote} or TraceID == ${search:singlequote}\n| project Timestamp, Line, level=tolower(SeverityText), Service, Environment, Scenario, Outcome, TraceID, SpanID,\n    Pod=tostring(ResourceAttributes[\"k8s.pod.name\"])\n| order by Timestamp desc\n| take 200",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "logs"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Error lines by service",
+      "description": "Records with severity ERROR or higher in the time window.",
+      "type": "bargauge",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 8,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELLogs\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Scenario=tostring(LogsAttributes[\"demo.scenario\"]), Outcome=tostring(LogsAttributes[\"outcome\"])\n| summarize ErrorLines=countif(SeverityNumber >= 17) by Service\n| order by ErrorLines desc\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": true,
+          "calcs": [],
+          "fields": "/^ErrorLines$/"
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "color",
+        "sizing": "auto"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Latest errors",
+      "description": "Newest 50 ERROR records for the selected services. Click a TraceID to open the request in the trace waterfall.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 27,
+        "w": 16,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELLogs\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Scenario=tostring(LogsAttributes[\"demo.scenario\"]), Outcome=tostring(LogsAttributes[\"outcome\"])\n| where SeverityNumber >= 17\n| where isempty(${trace_id:singlequote}) or TraceID == ${trace_id:singlequote}\n| extend Line=strcat(\"[\", Service, \"] \", Body, \" (\", Scenario, \", \", Outcome, \")\")\n| where isempty(${search:singlequote}) or Line contains ${search:singlequote} or TraceID == ${search:singlequote}\n| order by Timestamp desc\n| take 50\n| project Time=Timestamp, Service, Scenario, Outcome, TraceID",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Service"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Scenario"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Outcome"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TraceID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open trace waterfall",
+                    "url": "/d/fabric-rti-traces/fabric-rti-traces?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&var-service=${service:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Outcome"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Log breakdown",
+      "description": "Records grouped by service, scenario, outcome and severity, after every filter.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELLogs\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Scenario=tostring(LogsAttributes[\"demo.scenario\"]), Outcome=tostring(LogsAttributes[\"outcome\"])\n| where ${severity:singlequote} == \"all\" or SeverityText == ${severity:singlequote}\n| where isempty(${trace_id:singlequote}) or TraceID == ${trace_id:singlequote}\n| extend Line=strcat(\"[\", Service, \"] \", Body, \" (\", Scenario, \", \", Outcome, \")\")\n| where isempty(${search:singlequote}) or Line contains ${search:singlequote} or TraceID == ${search:singlequote}\n| summarize Lines=count(), LastSeen=max(Timestamp) by Service, Scenario, Outcome, Severity=SeverityText\n| extend Hop=array_index_of(dynamic([\"gateway\", \"checkout\", \"inventory\", \"payment\", \"shipping\", \"notifications\"]), Service)\n| order by Hop asc, Lines desc\n| project Service, Scenario, Outcome, Severity, Lines, LastSeen\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Severity"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "ERROR": {
+                        "color": "red",
+                        "index": 0
+                      },
+                      "INFO": {
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Service"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Scenario"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Outcome"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lines"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LastSeen"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Last seen"
+              },
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+id: rti-oncall
+name: RTI On-Call (Fabric Real-Time Intelligence)
+version: 1.0.0
+services:
+  auth:
+    enabled: true
+    fabric:
+      enabled: true
+      externalEntraExchange: true
+    password:
+      enabled: false
+    allowedRedirectUris:
+      - http://localhost:5184
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - https://flat-clove-167bb64dc2-westus3.webapp.fabricapps.net
+  data:
+    enabled: false
+  staticHosting:
+    enabled: true
+    path: packages/frontend
+    folder: dist
+    buildCommand: npm run build:fabric
+    indexDocument: index.html
+    assetAccess: protected
+    embedded:
+      only: false
+  storage:
+    enabled: false
+  functions:
+    enabled: true
+    path: packages/functions
+    buildCommand: npm run build
+    auth:
+      type: application

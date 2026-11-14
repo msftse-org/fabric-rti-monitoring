@@ -3,6 +3,7 @@
 !.env.example
 !.env.*.example
 *.local.json
+*.local.yaml
 *.local.bicepparam
 infra/main.json
 infra/main.parameters.json
@@ -12,3 +13,17 @@ __pycache__/
 .DS_Store
 .venv/
 node_modules/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+*.tfplan
+*.tfvars
+*.tfvars.json
+*.local.hcl
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+crash.log
+crash.*.log

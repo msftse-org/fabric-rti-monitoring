@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["clusterName", "kusto", "workloadIdentity", "images", "apps", "loadgen"],
+  "properties": {
+    "global": {"type": "object"},
+    "clusterName": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"},
+    "kusto": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clusterUri", "database"],
+      "properties": {
+        "clusterUri": {
+          "description": "Fabric database HTTPS query URI, not the ingest- URI.",
+          "type": "string",
+          "pattern": "^https://[a-z0-9][a-z0-9.-]*\\.kusto\\.fabric\\.microsoft\\.com/?$",
+          "not": {"pattern": "^https://ingest-"}
+        },
+        "database": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,259}$"}
+      }
+    },
+    "workloadIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clientId", "tenantId", "namespace", "serviceAccountName"],
+      "properties": {
+        "clientId": {"$ref": "#/definitions/uuid"},
+        "tenantId": {"$ref": "#/definitions/uuid"},
+        "namespace": {"$ref": "#/definitions/dnsLabel"},
+        "serviceAccountName": {"$ref": "#/definitions/dnsLabel"}
+      }
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collector", "python", "pullPolicy"],
+      "properties": {
+        "collector": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent"]}
+      }
+    },
+    "apps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metricExportIntervalMs"],
+      "properties": {
+        "metricExportIntervalMs": {"type": "integer", "minimum": 5000, "maximum": 300000}
+      }
+    },
+    "loadgen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "requestsPerSecond", "checkoutRatio", "runIdRotationSeconds"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "requestsPerSecond": {"type": "number", "minimum": 0.1, "maximum": 10},
+        "checkoutRatio": {"type": "number", "minimum": 0, "maximum": 1},
+        "runIdRotationSeconds": {"type": "integer", "minimum": 60, "maximum": 86400}
+      }
+    }
+  },
+  "definitions": {
+    "uuid": {"type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"},
+    "dnsLabel": {"type": "string", "pattern": "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$"}
+  }
+}

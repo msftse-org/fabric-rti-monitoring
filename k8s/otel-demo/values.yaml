@@ -1,0 +1,38 @@
+# Generate the environment-specific values with:
+#   terraform -chdir=infra/terraform output -raw aks_helm_values > k8s/aks.local.yaml
+# See docs/aks-demo.md. Nothing here is secret: workload identity uses federated tokens.
+
+# AKS cluster name, stamped on every record as resource attribute k8s.cluster.name.
+clusterName: ""
+
+kusto:
+  # Fabric KQL database QUERY URI. The exporter discovers the ingestion endpoint.
+  clusterUri: ""
+  database: ""
+
+workloadIdentity:
+  # Client ID of the collector user-assigned identity (the KQL database ingestor).
+  clientId: ""
+  tenantId: ""
+  # Must match the Terraform federated credential subject
+  # system:serviceaccount:<namespace>:<serviceAccountName>.
+  namespace: otel-demo
+  serviceAccountName: otel-collector
+
+images:
+  collector: otel/opentelemetry-collector-contrib:0.141.0
+  python: python:3.13-slim
+  pullPolicy: IfNotPresent
+
+apps:
+  # SDK metric export interval. Each export produces one gauge point per scenario and outcome.
+  metricExportIntervalMs: 15000
+
+loadgen:
+  enabled: true
+  # Gateway requests per second across all scenarios.
+  requestsPerSecond: 1
+  # Share of requests that call checkout and payment; the rest are browse-only.
+  checkoutRatio: 0.5
+  # How often a new demo.run_id baggage value starts.
+  runIdRotationSeconds: 3600

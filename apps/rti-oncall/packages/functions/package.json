@@ -1,0 +1,21 @@
+{
+  "name": "rayfin-functions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/rti-oncall/packages/functions/src/function_app.js",
+  "scripts": {
+    "test": "npm run build && node --test test/*.test.mjs",
+    "build": "tsc --build",
+    "build:watch": "tsc --build --watch",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@microsoft/fabric-user-data-functions": "1.36.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.0",
+    "rimraf": "^6.0.0"
+  }
+}

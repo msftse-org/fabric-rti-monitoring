@@ -1,0 +1,12 @@
+# Shape of the values written by:
+#   terraform -chdir=infra/terraform output -raw aks_helm_values > k8s/aks.local.yaml
+# These placeholders are only for linting; *.local.yaml files are git-ignored.
+clusterName: dev-aks-frti
+kusto:
+  clusterUri: https://example.z0.kusto.fabric.microsoft.com
+  database: Observability
+workloadIdentity:
+  clientId: 00000000-0000-0000-0000-000000000000
+  tenantId: 00000000-0000-0000-0000-000000000000
+  namespace: otel-demo
+  serviceAccountName: otel-collector

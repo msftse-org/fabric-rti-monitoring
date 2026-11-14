@@ -1,0 +1,26 @@
+{{- if ne .Release.Namespace .Values.workloadIdentity.namespace }}
+{{- fail (printf "Install into namespace %q: the federated credential trusts only that namespace." .Values.workloadIdentity.namespace) }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+data:
+  collector.yaml: |
+    {{- .Files.Get "files/collector.yaml" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shop-code
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+data:
+  shop.py: |
+    {{- .Files.Get "files/shop.py" | nindent 4 }}
+  loadgen.py: |
+    {{- .Files.Get "files/loadgen.py" | nindent 4 }}
+  requirements.txt: |
+    {{- .Files.Get "files/requirements.txt" | nindent 4 }}

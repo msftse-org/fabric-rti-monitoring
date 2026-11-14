@@ -1,0 +1,1129 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_FABRIC",
+      "label": "Fabric Eventhouse",
+      "description": "Azure Data Explorer datasource configured for this demo KQL database",
+      "type": "datasource",
+      "pluginId": "grafana-azure-data-explorer-datasource",
+      "pluginName": "Azure Data Explorer Datasource"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "grafana-azure-data-explorer-datasource",
+      "name": "Azure Data Explorer Datasource",
+      "version": "4.6.1"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "timeseries",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "table",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "uid": "fabric-rti-metrics",
+  "title": "Fabric RTI Metrics",
+  "description": "Golden signals for every microservice: OpenTelemetry request counters and duration gauges, plus span-derived percentiles and Fabric materialized views.",
+  "tags": [
+    "fabric-rti",
+    "metrics",
+    "opentelemetry",
+    "synthetic"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Fabric RTI",
+      "type": "dashboards",
+      "tags": [
+        "fabric-rti"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "database",
+        "label": "KQL database",
+        "type": "textbox",
+        "query": "Observability",
+        "description": "Eventhouse KQL database that stores the OTEL tables.",
+        "current": {
+          "text": "Observability",
+          "value": "Observability"
+        },
+        "hide": 0
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "description": "",
+        "query": "All environments : all, AKS : aks, Container Apps job : demo",
+        "current": {
+          "text": "All environments",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All environments",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "AKS",
+            "value": "aks",
+            "selected": false
+          },
+          {
+            "text": "Container Apps job",
+            "value": "demo",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "description": "",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, postgres : postgres",
+        "current": {
+          "text": "All services",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All services",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "gateway",
+            "value": "gateway",
+            "selected": false
+          },
+          {
+            "text": "checkout",
+            "value": "checkout",
+            "selected": false
+          },
+          {
+            "text": "inventory",
+            "value": "inventory",
+            "selected": false
+          },
+          {
+            "text": "payment",
+            "value": "payment",
+            "selected": false
+          },
+          {
+            "text": "shipping",
+            "value": "shipping",
+            "selected": false
+          },
+          {
+            "text": "notifications",
+            "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "postgres",
+            "value": "postgres",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Golden signals",
+      "description": "From the demo.requests counter and demo.request.duration gauge. Throughput counts every service hop, so choose gateway for user-facing traffic.",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let minutes = max_of(1.0, ($__timeTo - $__timeFrom) / 1m);\nOTELMetrics\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Pod=tostring(ResourceAttributes[\"k8s.pod.name\"]), Scenario=tostring(MetricAttributes[\"demo.scenario\"]),\n    Outcome=tostring(MetricAttributes[\"outcome\"])\n| summarize Requests=sumif(MetricValue, MetricName == \"demo.requests\"),\n    MeanMs=take_anyif(MetricValue, MetricName == \"demo.request.duration\")\n    by Timestamp, Service, Environment, Pod, Scenario, Outcome\n| summarize Requests=sum(Requests), Errors=sumif(Requests, Outcome == \"error\"),\n    WeightedMs=sumif(MeanMs * Requests, isnotnull(MeanMs)), Weighted=sumif(Requests, isnotnull(MeanMs)),\n    Pods=dcountif(Pod, isnotempty(Pod)), Newest=max(Timestamp)\n| project RequestsPerMinute=Requests / minutes, ErrorPercent=iff(Requests == 0, real(null), 100.0 * Errors / Requests),\n    MeanLatencyMs=iff(Weighted == 0, real(null), WeightedMs / Weighted), Pods, NewestSampleAgeSeconds=(now() - Newest) / 1s",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RequestsPerMinute"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Requests / min"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: req/min"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ErrorPercent"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error rate"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "MeanLatencyMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Mean latency"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500
+                    },
+                    {
+                      "color": "red",
+                      "value": 1000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pods"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Reporting pods"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "NewestSampleAgeSeconds"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Newest sample age"
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 120
+                    },
+                    {
+                      "color": "red",
+                      "value": 300
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      }
+    },
+    {
+      "id": 2,
+      "title": "Requests per minute",
+      "description": "Sum of the demo.requests delta counter per service. Gaps mean no export, not zero traffic.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELMetrics\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Pod=tostring(ResourceAttributes[\"k8s.pod.name\"]), Scenario=tostring(MetricAttributes[\"demo.scenario\"]),\n    Outcome=tostring(MetricAttributes[\"outcome\"])\n| where MetricName == \"demo.requests\"\n| summarize Requests=sum(MetricValue) by WindowStart=bin(Timestamp, 1m), Service, Environment\n| project WindowStart, Requests, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/min",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Error rate",
+      "description": "Share of demo.requests with outcome=error, per service.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELMetrics\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Pod=tostring(ResourceAttributes[\"k8s.pod.name\"]), Scenario=tostring(MetricAttributes[\"demo.scenario\"]),\n    Outcome=tostring(MetricAttributes[\"outcome\"])\n| where MetricName == \"demo.requests\"\n| summarize Requests=sum(MetricValue), Errors=sumif(MetricValue, Outcome == \"error\")\n    by WindowStart=bin(Timestamp, 1m), Service, Environment\n| project WindowStart, ErrorPercent=100.0 * Errors / Requests, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Mean latency",
+      "description": "demo.request.duration gauge weighted by the matching request count.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELMetrics\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Pod=tostring(ResourceAttributes[\"k8s.pod.name\"]), Scenario=tostring(MetricAttributes[\"demo.scenario\"]),\n    Outcome=tostring(MetricAttributes[\"outcome\"])\n| summarize Requests=sumif(MetricValue, MetricName == \"demo.requests\"),\n    MeanMs=take_anyif(MetricValue, MetricName == \"demo.request.duration\")\n    by Timestamp, Service, Environment, Pod, Scenario, Outcome\n| where isnotnull(MeanMs) and Requests > 0\n| summarize MeanMs=sum(MeanMs * Requests) / sum(Requests) by WindowStart=bin(Timestamp, 1m), Service, Environment\n| project WindowStart, MeanMs, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "p95 latency from server spans",
+      "description": "95th percentile of SERVER span durations per service. Database client spans are excluded.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where SpanKind == \"SPAN_KIND_SERVER\"\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| summarize P95Ms=percentile((EndTime - StartTime) / 1ms, 95) by WindowStart=bin(StartTime, 1m), Service, Environment\n| project WindowStart, P95Ms, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Requests by outcome",
+      "description": "demo.requests split into success and error for the selected services.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "OTELMetrics\n| where $__timeFilter(Timestamp)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend Pod=tostring(ResourceAttributes[\"k8s.pod.name\"]), Scenario=tostring(MetricAttributes[\"demo.scenario\"]),\n    Outcome=tostring(MetricAttributes[\"outcome\"])\n| where MetricName == \"demo.requests\"\n| summarize Requests=sum(MetricValue) by WindowStart=bin(Timestamp, 1m), Environment, Outcome\n| project WindowStart, Requests, Series=strcat(Environment, \" / \", Outcome)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: req/min",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ (error|failed)$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ (success|ok|info)$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Gateway latency p50 / p95",
+      "description": "Root request latency from the Requests1m materialized view (approximate percentiles). Only the gateway serves root requests.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 20,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "RequestsOverview(30d)\n| where $__timeFilter(WindowStart)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| project WindowStart, p50=P50Ms, p95=P95Ms, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "displayName": "${__field.labels.Series} ${__field.name}",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Latency spikes - interval max",
+      "description": "Highest per-export mean duration each minute, from the Metrics1m materialized view. Injected latency spikes show here first.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 20,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "MetricDurationOverview(30d)\n| where $__timeFilter(WindowStart)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| project WindowStart, MaximumMs, Series=strcat(Environment, \" / \", Service)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "auto",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "Service health",
+      "description": "SERVER spans per service in the time window, in call-chain order.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let minutes = max_of(1.0, ($__timeTo - $__timeFrom) / 1m);\nOTELTraces\n| where $__timeFilter(StartTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| extend Service=tostring(ResourceAttributes[\"service.name\"]), Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where SpanKind == \"SPAN_KIND_SERVER\"\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| extend DurationMs=(EndTime - StartTime) / 1ms\n| summarize Requests=count(), Errors=countif(SpanStatus == \"STATUS_CODE_ERROR\"),\n    P50Ms=percentile(DurationMs, 50), P95Ms=percentile(DurationMs, 95),\n    LastSeen=max(StartTime), Pods=dcount(tostring(ResourceAttributes[\"k8s.pod.name\"]))\n    by Service, Environment\n| extend Hop=array_index_of(dynamic([\"gateway\", \"checkout\", \"inventory\", \"payment\", \"shipping\", \"notifications\"]), Service)\n| order by Environment asc, Hop asc\n| project Service, Environment, RequestsPerMinute=Requests / minutes, Errors, ErrorPercent=100.0 * Errors / Requests,\n    P50Ms, P95Ms, LastSeen, Pods\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RequestsPerMinute"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Requests / min"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: req/min"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ErrorPercent"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Error rate"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P50Ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p50"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95Ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 500
+                    },
+                    {
+                      "color": "red",
+                      "value": 1000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Errors"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pods"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "LastSeen"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Last seen"
+              },
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+# Deny all inbound traffic in the namespace, then allow only the demo call graph.
+# Egress stays open: pods need PyPI, Microsoft Entra ID, and the Fabric endpoint.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+{{- range $target, $source := dict "gateway" "loadgen" "checkout" "gateway" "inventory" "checkout" "payment" "inventory" "shipping" "payment" "notifications" "shipping" }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-{{ $source }}-to-{{ $target }}
+  labels:
+    {{- include "otel-demo.labels" $ | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $target }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $source }}
+      ports:
+        - port: 8080
+          protocol: TCP
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apps-to-collector
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: app
+      ports:
+        - port: 4318
+          protocol: TCP

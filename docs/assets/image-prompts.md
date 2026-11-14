@@ -38,7 +38,115 @@ Edit the supplied diagram with ONLY the following connector corrections. Preserv
 All labels and official product logo assets remain exact, without distortion, crop, rotation or color changes. Preserve the subtitle and the bottom footnote explaining that only the broker foundation is implemented.
 ```
 
-Generated with the Codex built-in image generation tool. The official reference sheet is in `official/reference-sheet.png`. The architecture was refined from an earlier layout; the final edit below fixes the connector and preserves the product artwork. The final assets are `architecture-azure.png` and `data-flow.png`.
+## Architecture with consumption options (current `architecture-azure.png`)
+
+Generated with the GitHub Copilot CLI image generation tool (gpt-image) in one
+composition pass. Image1 is the previous `architecture-azure.png` (the AKS revision
+below), Image2 is `official/aks-reference-sheet.png`, and Image3 is
+`official/consume-reference-sheet.png`. All text was correct in that render. One
+deterministic post-processing step followed: the render drew placeholder glyphs instead
+of four official icons (an fx glyph for KQL queryset, a page for Notebooks, a robot for
+Operations agent, and the Fabric logo for Data agent). Each glyph region was filled
+with the surrounding tile background, interpolated per row, and the unmodified official
+SVG (`kql_queryset_64_item`, `notebook_64_item`, `operations_agent_64_item`,
+`data_agent_64_item`) was rasterized and pasted at the same center with its aspect ratio
+preserved. No other pixels were changed. Activator, Fabric apps, and Agent Skills use
+neutral glyphs because no official icon is used for them.
+
+```text
+Use case: infographic-diagram
+Asset type: public GitHub README architecture diagram, wide landscape, high resolution, revision that adds the consumption side.
+
+Image1 is the CURRENT diagram. Keep its visual style exactly: clean white background, navy title typography, pale-blue rounded panels with thin azure borders, teal Microsoft Fabric panel, same arrow style, same numbered bottom rail. Image2 and Image3 are sheets of OFFICIAL product icons with their names written under each icon. Reuse these icons exactly as references, preserving shape, orientation, aspect ratio and colors. Never recolor, crop, rotate, distort or invent product logos. Where no icon is supplied, use a simple neutral navy line glyph that is clearly not a logo.
+
+Title EXACT: "OpenTelemetry on Azure + Fabric"
+Subtitle EXACT: "Produce, analyze and consume: dashboards, automation and AI agents"
+
+Layout: THREE columns plus the bottom rail. Main data flow is strictly left to right.
+
+COLUMN 1, left, about 30% of the width, "produce". Keep the two panels from Image1 with the same wording, slightly more compact:
+- Panel "Azure Container Apps" (official Container Apps icon): card "Synthetic telemetry job" with caption "Manual run · finite batch", down arrow labeled "OTLP / HTTPS", card "OpenTelemetry Collector" (official OpenTelemetry icon) with chips "Filter", "Transform", "Batch", then a small "Managed identity" badge (official icon).
+- Panel "Azure Kubernetes Service" (official AKS icon) with badge "namespace: otel-demo": card "Load generator" arrow to card "Microservices" with tiny chips gateway, checkout, inventory, payment, shipping, notifications; down arrow labeled "OTLP / HTTP"; card "OpenTelemetry Collector" with chips "Filter", "Transform", "Batch"; small "Workload identity" badge.
+- Both collectors join into one connector labeled "Azure Data Explorer exporter" that enters column 2 at "Raw telemetry".
+
+COLUMN 2, center, about 27% of the width. Keep the teal "Microsoft Fabric" panel (official Fabric icon) with the "Fabric capacity" badge and inner "Workspace". Inside: "Eventhouse / KQL database" (official KQL database icon) and the vertical stack "Raw telemetry" (caption "Logs / Traces / Metrics") → "Materialized views" → "KQL query layer" (caption "Functions + raw detail"). Remove the Real-Time Dashboard card from this column; it moves to column 3.
+
+COLUMN 3, right, about 43% of the width. One large pale-blue panel titled "Consume" containing four stacked group cards. Each group card has a small navy header and a row of icon tiles with short labels:
+1. Header "Dashboards & apps". Tiles: official Azure Managed Grafana icon labeled "Grafana" with caption "Metrics · Logs · Traces"; official Real-Time Dashboard icon labeled "Real-Time Dashboards"; official Power BI icon labeled "Power BI"; neutral app-window glyph labeled "Fabric apps" with caption "On-Call".
+2. Header "Explore & analyze". Tiles: official KQL queryset icon labeled "KQL queryset" with a small official Copilot in Fabric icon and caption "+ Copilot"; official Notebook icon labeled "Notebooks"; official OneLake icon labeled "OneLake".
+3. Header "Alert & act". Tiles: neutral lightning-bolt glyph labeled "Activator" with caption "Teams · Email · Power Automate"; official Operations agent icon labeled "Operations agent".
+4. Header "AI agents". This is the most prominent group card, slightly taller, with a subtle teal accent border. Left part: official Model Context Protocol icon with label "MCP servers" and three chips "Eventhouse MCP", "Fabric RTI MCP", "Grafana MCP". Middle part: neutral document glyph labeled "Agent Skills" with chip "SKILL.md". Right part: official Fabric data agent icon labeled "Data agent". Bottom line inside this card: official GitHub Copilot icon followed by the text "GitHub Copilot · VS Code · Copilot Studio · Microsoft 365 Copilot · Foundry".
+Below the four group cards, inside the Consume panel, a thin strip with the text "APIs: Kusto REST + SDKs · Fabric REST".
+
+Connector: one bold azure arrow from the RIGHT EDGE of "KQL query layer" to the LEFT EDGE of the Consume panel, single arrowhead, labeled "KQL · MCP · REST".
+
+Bottom rail: keep the four numbered steps from Image1 with the EXACT same text: "Terraform or Bicep: Azure resources", "Fabric REST: workspace + items", "KQL: schema + serving layer", "Helm: AKS telemetry workload".
+
+Footnote, small gray text at the very bottom, EXACT: "Deployed by this sample: Grafana, Real-Time Dashboards, Fabric apps and a repo Agent Skill. Other options connect to the same Eventhouse."
+
+Constraints: reference design, not a screenshot. Only product and generic names. No resource names, IDs, regions, prices, metrics or production claims. Every label spelled exactly as written above. Short legible labels, generous spacing, no overlapping text, one arrowhead per arrow.
+```
+
+## Architecture with AKS (previous version)
+
+Generated with the GitHub Copilot CLI image generation tool (gpt-image). Image1 for
+the first prompt is the previous Codex architecture image, produced by the
+"Architecture" prompts further below. Image2 is `official/aks-reference-sheet.png`. One
+correction edit followed, using the first render as Image1. After that, one
+deterministic post-processing step: the edit misspelled the AKS badge text, so the
+"Workload identity" text region was copied pixel-for-pixel from the first render at the
+same position. No other pixels were changed.
+
+### Composition
+
+```text
+Use case: infographic-diagram
+Asset type: public GitHub README architecture diagram, wide landscape, high resolution, technical accuracy revision.
+
+Image1 is the CURRENT diagram. Use it as the visual style and layout reference: same clean white background, same navy title typography, same pale-blue rounded panels with thin azure borders, same teal Microsoft Fabric panel, same arrow style, same numbered bottom rail. Image2 is a sheet of OFFICIAL product icons. Reuse these icons exactly as references, preserving their shape, orientation, aspect ratio and colors: Azure Kubernetes Service, OpenTelemetry, Azure Container Apps, Microsoft Fabric, KQL database, Real-Time Dashboard, Azure Managed Grafana, Managed identity. Never recolor, crop, rotate, distort or invent product logos.
+
+Create a NEW version of the diagram that adds a continuous Azure Kubernetes Service workload instrumented with OpenTelemetry.
+
+Title EXACT: "OpenTelemetry on Azure + Fabric"
+Subtitle EXACT: "A finite synthetic job or continuous AKS microservices"
+
+LEFT COLUMN: two stacked producer panels of equal width.
+Upper panel "Azure Container Apps" with the official Container Apps icon. Keep it compact: card "Synthetic telemetry job" with small text "Manual run • finite batch"; short down arrow labeled "OTLP / HTTPS"; card "OpenTelemetry Collector" with the official OpenTelemetry icon and three small chips "Filter", "Transform", "Batch". A small badge with the official Managed identity icon and text "Managed identity". Footer text "Ingress limited to this environment".
+Lower panel "Azure Kubernetes Service" with the official AKS icon, and a small tag "namespace: otel-demo". Inside: a small card "Load generator" with an arrow into a row of six small connected service chips in this exact order with thin arrows between them: "gateway" → "checkout" → "inventory" → "payment" → "shipping" → "notifications". Under the chips a small caption "OpenTelemetry SDK in every service". A down arrow labeled "OTLP / HTTP" goes to a card "OpenTelemetry Collector" with the official OpenTelemetry icon and chips "Filter", "Transform", "Batch". A small badge with the official Managed identity icon and text "Workload identity". Footer text "Cluster-internal services only".
+
+CENTER: the "Microsoft Fabric" panel with the official Fabric logo and the small tag "Fabric capacity". Inside "Workspace", keep the "Eventhouse / KQL database" section with the complete official KQL database icon, and its vertical stack: card "Raw telemetry" with subtitle "Logs / Traces / Metrics", down arrow, card "Materialized views" with a small neutral bar-chart symbol, down arrow, card "KQL query layer" with an italic fx symbol and subtitle "Functions + raw detail". Keep the bypass elbow line from the right edge of Raw telemetry down to KQL query layer. Below the Eventhouse section, still inside the Workspace, add a card "Real-Time Dashboard" with the official Real-Time Dashboard icon and subtitle "Metrics · Logs · Traces", fed by a short arrow from KQL query layer.
+
+INGESTION CONNECTORS: BOTH OpenTelemetry Collector cards each have ONE uninterrupted elbow line leaving their right edge, merging into one line just outside the Fabric panel, which ends with ONE arrowhead at the LEFT EDGE of the Raw telemetry card. Label the merged line "Azure Data Explorer exporter". No other arrows enter Fabric from the left.
+
+RIGHT: the "Azure Managed Grafana" panel with the official Grafana icon. Inside one card titled "Metrics · Logs · Traces" containing three small tab-like mini dashboard thumbnails: a line chart, a log list, and a horizontal trace waterfall with staggered bars. Below it the badge with the official Managed identity icon and text "Managed identity". One arrow from the right edge of KQL query layer to the Grafana panel labeled "KQL query results".
+
+BOTTOM RAIL, four numbered steps with arrows between neighbours, same style as Image1:
+1 "Terraform or Bicep: Azure resources"
+2 "Fabric REST: workspace + items"
+3 "KQL: schema + serving layer"
+4 "Helm: AKS telemetry workload"
+
+Constraints: a reference architecture illustration, not a screenshot. Use only the product names and labels given above, spelled exactly. No resource names, IDs, IP addresses, region names, prices or metrics. Sharp, legible text with no paragraphs and no misspellings. Generous whitespace, nothing crowded or overlapping. All telemetry arrows flow left to right.
+```
+
+### Correction edit
+
+```text
+Use case: infographic-diagram
+Edit Image1 with minimal changes. Image2 is a sheet of OFFICIAL product icons; reuse icons from it exactly, preserving shape, aspect ratio and colors. Never recolor, crop or invent logos.
+
+Make ONLY these three corrections inside the existing layout. Keep every other element, label, color, position, font and arrow of Image1 unchanged, including the title, subtitle, Azure Container Apps panel, Microsoft Fabric panel, Azure Managed Grafana panel and the four-step bottom rail.
+
+1. In the "Azure Kubernetes Service" panel, separate the load generator from the services. Replace the current single white card with: a small standalone card "Load generator" on the left, then ONE short arrow from it into a separate white card titled "Microservices" that contains the six chips in this exact order with small arrows between them: "gateway" → "checkout" → "inventory" → "payment" → "shipping" → "notifications", and the caption "OpenTelemetry SDK in every service" under the chips. Keep the down arrow labeled "OTLP / HTTP" from the Microservices card to the in-cluster "OpenTelemetry Collector" card, and keep the "Workload identity" badge and the footer "Cluster-internal services only".
+
+2. Delete the stray horizontal line that currently connects the right edge of the services card to the vertical blue connector line. The ONLY lines that join the vertical connector are the one from the right edge of the upper "OpenTelemetry Collector" card (Azure Container Apps) and the one from the right edge of the lower "OpenTelemetry Collector" card (Azure Kubernetes Service). They merge into one line labeled "Azure Data Explorer exporter" ending with ONE arrowhead at the left edge of "Raw telemetry".
+
+3. In the "Real-Time Dashboard" card inside Microsoft Fabric, replace the plain pink circle with the COMPLETE official Real-Time Dashboard icon from Image2: the light-grey rounded square tile containing the magenta gauge circle, with the small magenta arrow in its lower-right corner, at the same size as the KQL database icon in the same panel.
+
+Sharp, legible text, no misspellings, no new labels beyond those named above.
+```
+
+Generated with the Codex built-in image generation tool. The official reference sheet is in `official/reference-sheet.png`. The previous architecture image (the layout reference for the AKS revision above) was refined from an earlier layout; the final edits below fix the connector and preserve the product artwork. `data-flow.png` is still the Codex asset.
 
 ## Architecture: final refinement
 

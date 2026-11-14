@@ -8,7 +8,7 @@ import sys
 import urllib.parse
 
 ROOT = Path(__file__).resolve().parents[1]
-TEXT_SUFFIXES = {'.md', '.py', '.json', '.yaml', '.yml', '.bicep', '.bicepparam', '.kql', '.mmd'}
+TEXT_SUFFIXES = {'.md', '.py', '.json', '.yaml', '.yml', '.bicep', '.bicepparam', '.kql', '.mmd', '.tf', '.hcl', '.tpl', '.txt'}
 SECRET_PATTERNS = [
     re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
     re.compile(r'\bgh[pousr]_[A-Za-z0-9]{30,}\b'),
@@ -20,10 +20,11 @@ SECRET_PATTERNS = [
 def main():
     errors = []
     files = [p for p in ROOT.rglob('*') if p.is_file()
-             and not set(p.relative_to(ROOT).parts) & {'.git', '__pycache__', 'output', '.venv'}
-             and '.local.' not in p.name]
+             and not set(p.relative_to(ROOT).parts) & {'.git', '__pycache__', 'output', '.venv', '.azure', '.terraform', 'node_modules', 'dist', '.temp'}
+             and '.local.' not in p.name
+             and not p.name.endswith(('.tfvars', '.tfvars.json'))]
     for path in files:
-        if path.suffix not in TEXT_SUFFIXES:
+        if path.suffix not in TEXT_SUFFIXES and not path.name.endswith(('.tfvars.example', '.hcl.example')):
             continue
         content = path.read_text()
         relative = path.relative_to(ROOT)
