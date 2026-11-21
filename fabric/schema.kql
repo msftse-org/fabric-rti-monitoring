@@ -282,10 +282,10 @@
     spans
     | summarize Start=min(StartTime), End=max(EndTime), Agents=make_set_if(Agent, Operation == "invoke_agent"), Models=make_set_if(Model, Operation == "chat"), Tools=make_set_if(Tool, Operation == "execute_tool"),
         ModelCalls=countif(Operation == "chat"), ToolCalls=countif(Operation == "execute_tool"), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens),
-        Failed=max(toint(Failed)) == 1, Environment=take_any(Environment), Version=take_any(Version) by TraceID
+        Failed=max(toint(Failed)) == 1, Service=take_anyif(Service, Operation == "invoke_agent"), Environment=take_any(Environment), Version=take_any(Version) by TraceID
     | join kind=leftouter entry on TraceID
     | extend DurationMs=(End - Start) / 1ms, Handoff=array_length(Agents) > 1
-    | project Start, TraceID, Environment, Version, EntryAgent, Agents, Handoff, Models, Tools, ModelCalls, ToolCalls, InputTokens, OutputTokens, DurationMs, Failed
+    | project Start, TraceID, Service, Environment, Version, EntryAgent, Agents, Handoff, Models, Tools, ModelCalls, ToolCalls, InputTokens, OutputTokens, DurationMs, Failed
     | order by Start desc
 }
 

@@ -326,7 +326,7 @@ class RealTimeDashboardTests(unittest.TestCase):
     def setUpClass(cls):
         cls.dashboards = {
             subject: json.loads((ROOT / "fabric" / "dashboards" / f"{subject}.json").read_text())
-            for subject in ("metrics", "logs", "traces")
+            for subject in ("metrics", "logs", "traces", "issues", "releases", "agents")
         }
 
     def queries_for(self, dashboard):
@@ -337,12 +337,16 @@ class RealTimeDashboardTests(unittest.TestCase):
         return [(tile, queries[tile["queryRef"]["queryId"]]["text"])
                 for tile in dashboard["tiles"] if "queryRef" in tile]
 
-    def test_three_single_page_dashboards_have_matching_titles_and_refresh(self):
+    def test_six_single_page_dashboards_have_matching_titles_and_refresh(self):
         expected = {
             "metrics": ("Fabric RTI Metrics", "Metrics", "30s"),
             "logs": ("Fabric RTI Logs", "Logs", "30s"),
             "traces": ("Fabric RTI Traces", "Traces", "1m"),
+            "issues": ("Fabric RTI Issues", "Issues", "1m"),
+            "releases": ("Fabric RTI Releases", "Releases", "1m"),
+            "agents": ("Fabric RTI Agents", "Agents", "1m"),
         }
+        self.assertEqual(sorted(path.stem for path in (ROOT / "fabric" / "dashboards").glob("*.json")), sorted(expected))
         for subject, (title, page, refresh) in expected.items():
             with self.subTest(subject=subject):
                 dashboard = self.dashboards[subject]
@@ -405,9 +409,10 @@ class RealTimeDashboardTests(unittest.TestCase):
                         continue
                     if "selected_trace" in text:
                         self.assertIn("let selected_trace", text)
-                        self.assertIn("TraceID == selected_trace", text)
+                        self.assertRegex(text, r"TraceID == selected_trace|AgentRun\(selected_trace\)")
                         continue
-                    self.assertRegex(text, r"between \(_startTime \.\. _endTime\)")
+                    # Functions with a lookback are scoped by the range start (now() - _startTime).
+                    self.assertRegex(text, r"between \(_startTime \.\. _endTime\)|between \(bin\(_startTime, 1h\) \.\. _endTime\)|\(now\(\) - _startTime\)")
                     self.assertIn("isempty(_environment) or", text)
                     if tile["title"] != "Gateway latency (ms) · RequestsOverview":
                         self.assertIn("isempty(_service) or", text)
@@ -454,6 +459,25 @@ class RealTimeDashboardTests(unittest.TestCase):
         # Rows sharing a label would collapse into one category.
         self.assertIn("row_number(1, Label != prev(Label))", query_text("Trace waterfall"))
         self.assertIn("Logs=coalesce(Logs, 0)", query_text("Spans in this trace"))
+
+    def test_new_dashboards_use_shared_latency_scale_and_cross_filter_pickers(self):
+        def rules(dashboard):
+            return [rule for tile in dashboard["tiles"] for rule in tile.get("visualOptions", {}).get("colorRules", [])]
+
+        for subject in ("releases", "agents", "metrics"):
+            thresholds = {(c["operator"], c["values"][0]) for rule in rules(self.dashboards[subject])
+                          if rule["ruleName"] in ("fast", "slow", "very slow") for c in rule["conditions"]}
+            with self.subTest(subject=subject):
+                self.assertEqual(thresholds, {("<", "1000"), (">=", "1000"), ("<", "3000"), (">=", "3000")})
+        for subject, variable, column in (("issues", "_issue", "Fingerprint"), ("agents", "_run", "TraceID")):
+            dashboard = self.dashboards[subject]
+            picker = next(p for p in dashboard["parameters"] if p.get("variableName") == variable)
+            self.assertEqual(picker["defaultValue"], {"kind": "query-result"})
+            links = [(link["property"], link["parameterId"]) for tile in dashboard["tiles"]
+                     for link in tile.get("visualOptions", {}).get("crossFilter", [])]
+            self.assertIn((column, picker["id"]), links)
+        services = next(p for p in self.dashboards["logs"]["parameters"] if p.get("variableName") == "_service")
+        self.assertIn("assistant", [v["value"] for v in services["dataSource"]["values"]])
 
     def test_cross_dashboard_navigation_and_trace_id_handoff(self):
         traces = self.dashboards["traces"]

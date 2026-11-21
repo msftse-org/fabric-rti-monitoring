@@ -1,0 +1,811 @@
+{
+  "schema_version": 75,
+  "title": "Fabric RTI Releases",
+  "autoRefresh": {
+    "enabled": true,
+    "defaultInterval": "1m",
+    "minInterval": "30s"
+  },
+  "tiles": [
+    {
+      "id": "fbcd9dd9-82c1-5477-806f-a06a1a838f2f",
+      "title": "Service releases",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Service, environment and version combinations in the range.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "d607d1bb-1d8c-52d7-9cdd-aafea9ac6c74"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Releases",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "d365b1c5-7fa4-53d9-91e0-1ba952d6ebe0",
+      "title": "Unhealthy",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Releases below 95% error-free.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "b78c7df3-d62a-575a-9149-5aefbe680697"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Unhealthy",
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "6f860046-ee4d-5067-90a5-c4a0bc8a96f1",
+            "ruleName": "unhealthy",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">",
+                "values": [
+                  "0"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "33639319-16e5-5ca1-a18f-4f3e78c4a520",
+      "title": "New issues",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 8,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Issues first seen in these releases.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "1e47bb5d-91c6-522d-998e-cd6d47d45cf2"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "NewIssues",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "fe0e823f-c628-5dd7-b3a6-fd2fbbc362ce",
+      "title": "Fabric RTI",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 12,
+        "y": 0,
+        "width": 12,
+        "height": 4
+      },
+      "visualType": "markdownCard",
+      "markdownText": "[Metrics]({{url:metrics}}) · [Logs]({{url:logs}}) · [Traces]({{url:traces}}) · [Issues]({{url:issues}}) · **Releases** · [Agents]({{url:agents}})\n\nTiers: healthy ≥ 99% error-free, degraded ≥ 95%, unhealthy below. Roll a release with `helm upgrade --set apps.version=…`.",
+      "visualOptions": {}
+    },
+    {
+      "id": "3a0ac49e-e3be-5ef4-87e2-57bdfa28ad72",
+      "title": "Newest release vs previous",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 0,
+        "y": 4,
+        "width": 24,
+        "height": 7
+      },
+      "visualType": "table",
+      "description": "Each service's newest version against the one before it.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "1e35322b-489e-51d9-80ac-2584d427e6be"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "9126f5fb-e768-58ac-8f44-136a021259e9",
+            "ruleName": "Verdict=worse",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Verdict",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Verdict",
+                "operator": "==",
+                "values": [
+                  "worse"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "f7555855-5db7-5927-8a35-869422d1f94b",
+            "ruleName": "Verdict=better",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Verdict",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "Verdict",
+                "operator": "==",
+                "values": [
+                  "better"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "29f9c5c4-27ba-5fdd-8cc7-b479b7322833",
+            "ruleName": "healthy",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "CurrentErrorFreeRate",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "CurrentErrorFreeRate",
+                "operator": ">=",
+                "values": [
+                  "0.99"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7ec1ea72-e726-55f8-bd72-c156e2b1361e",
+            "ruleName": "degraded",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "CurrentErrorFreeRate",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "CurrentErrorFreeRate",
+                "operator": ">=",
+                "values": [
+                  "0.95"
+                ]
+              },
+              {
+                "column": "CurrentErrorFreeRate",
+                "operator": "<",
+                "values": [
+                  "0.99"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "183cee88-5829-5cce-bef9-196c612b9596",
+            "ruleName": "unhealthy",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "CurrentErrorFreeRate",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "CurrentErrorFreeRate",
+                "operator": "<",
+                "values": [
+                  "0.95"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "ed162e41-110f-5e5c-9a8f-c619a9b7bd09",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "CurrentP95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "CurrentP95Ms",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "b4993671-2e8e-5168-9b65-90c884e5f160",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "CurrentP95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "CurrentP95Ms",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "CurrentP95Ms",
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "f041cc74-fced-5900-9bd7-43b134833e11",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "CurrentP95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "CurrentP95Ms",
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "c39f4e3d-c1a2-5f01-98ff-29d84a919e49",
+      "title": "Release health",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 0,
+        "y": 11,
+        "width": 24,
+        "height": 9
+      },
+      "visualType": "table",
+      "description": "Per release; fewer than 50 requests reads too few requests.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "dd5761fd-d39b-5481-bc5e-f8203f87fc39"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "8c3dbc49-b447-59ce-a409-2a4dc43ac9c9",
+            "ruleName": "Tier=healthy",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Tier",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "Tier",
+                "operator": "==",
+                "values": [
+                  "healthy"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "04f8ee53-89d5-5caa-a887-bd6d22fb2473",
+            "ruleName": "Tier=degraded",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Tier",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "Tier",
+                "operator": "==",
+                "values": [
+                  "degraded"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "12ebcc7d-91d6-591a-8e16-445db3e55a3b",
+            "ruleName": "Tier=unhealthy",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Tier",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Tier",
+                "operator": "==",
+                "values": [
+                  "unhealthy"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "78615070-651e-5994-a2f2-95dcd2f7a829",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "c1ce4e6c-5cc9-5258-bbe0-ccf71491b77c",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "P95Ms",
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "450b2126-cbdd-5882-bc25-bf3e5fa09c66",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "a8f7b074-8ddd-58d4-871d-c1c9b4ced5f8",
+      "title": "Error-free rate by version",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 0,
+        "y": 20,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "timechart",
+      "description": "Five-minute error-free rate of server spans.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "ef35f996-fd85-50b9-ba1e-709ddf60e158"
+      },
+      "visualOptions": {
+        "xColumn": "WindowStart",
+        "yColumns": [
+          "ErrorFreeRate"
+        ],
+        "seriesColumns": [
+          "Release"
+        ],
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "55920ff7-26a9-5120-81dc-eec6d95b3653",
+      "title": "p95 latency by version (ms)",
+      "pageId": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "layout": {
+        "x": 12,
+        "y": 20,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "timechart",
+      "description": "Approximate five-minute p95 of server spans.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "843bebe9-572c-596b-be8b-e4b49dca4e92"
+      },
+      "visualOptions": {
+        "xColumn": "WindowStart",
+        "yColumns": [
+          "P95Ms"
+        ],
+        "seriesColumns": [
+          "Release"
+        ],
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": []
+      }
+    }
+  ],
+  "baseQueries": [
+    {
+      "id": "a6324219-e0c5-531a-b425-436e5d98cd2a",
+      "queryId": "d02efe87-5308-55e5-97e7-c799d14c5daa",
+      "variableName": "_release_kpis"
+    }
+  ],
+  "parameters": [
+    {
+      "kind": "duration",
+      "id": "4a7426be-e895-512b-a4b9-8a74348ebeef",
+      "displayName": "Time range",
+      "description": "",
+      "beginVariableName": "_startTime",
+      "endVariableName": "_endTime",
+      "defaultValue": {
+        "kind": "dynamic",
+        "count": 1,
+        "unit": "hours"
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "ff34d74a-18a7-56a3-a130-c9d654065e64",
+      "displayName": "Environment",
+      "description": "Deployment environment reported by the OpenTelemetry resource.",
+      "variableName": "_environment",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "ec4b235e-0985-504d-b0d4-3115cc4b5dda"
+        },
+        "columns": {
+          "value": "Environment"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "86f9d1b8-2ded-5627-9dd6-b793dd40e0ff",
+      "displayName": "Service",
+      "description": "Microservice (service.name).",
+      "variableName": "_service",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "static",
+        "values": [
+          {
+            "value": "gateway"
+          },
+          {
+            "value": "checkout"
+          },
+          {
+            "value": "inventory"
+          },
+          {
+            "value": "payment"
+          },
+          {
+            "value": "shipping"
+          },
+          {
+            "value": "notifications"
+          },
+          {
+            "value": "assistant"
+          }
+        ]
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1",
+      "kind": "kusto-trident",
+      "name": "observability",
+      "clusterUri": "https://<eventhouse>.kusto.fabric.microsoft.com",
+      "databaseArtifactId": "00000000-0000-0000-0000-000000000000",
+      "database": "00000000-0000-0000-0000-000000000000",
+      "workspace": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "pages": [
+    {
+      "id": "0d0d9e02-aa65-5c73-952f-e7ee3f5e322e",
+      "name": "Releases"
+    }
+  ],
+  "queries": [
+    {
+      "id": "ec4b235e-0985-504d-b0d4-3115cc4b5dda",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| distinct Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| order by Environment asc",
+      "usedVariables": [
+        "_endTime",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "d02efe87-5308-55e5-97e7-c799d14c5daa",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "ReleaseHealth(now() - _startTime)\n| where LastSeen between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Releases=count(), Unhealthy=countif(Tier == \"unhealthy\"), NewIssues=sum(NewIssues)",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "d607d1bb-1d8c-52d7-9cdd-aafea9ac6c74",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_release_kpis\n| project Releases",
+      "usedVariables": [
+        "_release_kpis"
+      ]
+    },
+    {
+      "id": "b78c7df3-d62a-575a-9149-5aefbe680697",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_release_kpis\n| project Unhealthy",
+      "usedVariables": [
+        "_release_kpis"
+      ]
+    },
+    {
+      "id": "1e47bb5d-91c6-522d-998e-cd6d47d45cf2",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_release_kpis\n| project NewIssues",
+      "usedVariables": [
+        "_release_kpis"
+      ]
+    },
+    {
+      "id": "1e35322b-489e-51d9-80ac-2584d427e6be",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "ReleaseComparison(now() - _startTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| project Verdict, Service, Environment, Previous, Current, PreviousErrorFreeRate, CurrentErrorFreeRate, ErrorFreeDelta,\n    PreviousP95Ms, CurrentP95Ms, P95DeltaMs, NewIssues\n| take 200",
+      "usedVariables": [
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "dd5761fd-d39b-5481-bc5e-f8203f87fc39",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "ReleaseHealth(now() - _startTime)\n| where LastSeen between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| project Tier, Service, Environment, Version, ErrorFreeRate, Requests, Errors, P95Ms, NewIssues, FirstSeen, LastSeen\n| take 200",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "ef35f996-fd85-50b9-ba1e-709ddf60e158",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "Releases1m\n| where WindowStart between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Requests=sum(RequestCount), Errors=sum(ErrorCount), Digest=tdigest_merge(DurationDigest)\n    by WindowStart=bin(WindowStart, 5m), Release=strcat(Environment, \" / \", Version)\n| project WindowStart, Release, ErrorFreeRate=1.0 - todouble(Errors) / Requests\n| order by WindowStart asc",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "843bebe9-572c-596b-be8b-e4b49dca4e92",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "Releases1m\n| where WindowStart between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Requests=sum(RequestCount), Errors=sum(ErrorCount), Digest=tdigest_merge(DurationDigest)\n    by WindowStart=bin(WindowStart, 5m), Release=strcat(Environment, \" / \", Version)\n| project WindowStart, Release, P95Ms=todouble(percentiles_array_tdigest(Digest, dynamic([95]))[0])\n| order by WindowStart asc",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    }
+  ],
+  "embeddedApps": []
+}

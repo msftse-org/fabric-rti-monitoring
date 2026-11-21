@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Create or update the three subject-specific Fabric Real-Time Dashboards.
+"""Create or update the six subject-specific Fabric Real-Time Dashboards.
 
 The definitions in fabric/dashboards are templates: navigation links are resolved
-after all three Fabric items exist, then data sources are bound to an existing KQL
+after all six Fabric items exist, then data sources are bound to an existing KQL
 database. This script never deletes items or changes workspace permissions.
 """
 
@@ -21,7 +21,15 @@ _SPEC.loader.exec_module(fabric)
 
 DEFINITION_FILE = "RealTimeDashboard.json"
 PORTAL = "https://app.fabric.microsoft.com"
-SUBJECTS = ("metrics", "logs", "traces")
+SUBJECTS = ("metrics", "logs", "traces", "issues", "releases", "agents")
+DESCRIPTIONS = {
+    "metrics": "OpenTelemetry metrics from the demo microservices.",
+    "logs": "OpenTelemetry logs from the demo microservices.",
+    "traces": "OpenTelemetry traces from the demo microservices.",
+    "issues": "Failed spans grouped into issues, with triage status and lifecycle alerts.",
+    "releases": "Release health per service version.",
+    "agents": "AI agent runs from OpenTelemetry GenAI spans.",
+}
 TITLES = {subject: f"Fabric RTI {subject.title()}" for subject in SUBJECTS}
 TOKEN = re.compile(r"\{\{url:([a-z]+)\}\}")
 
@@ -65,7 +73,7 @@ def _ensure_item(client, base, subject, existing):
         return item["id"], "updated"
     created = client.mutate("POST", base + "/kqlDashboards", {
         "displayName": title,
-        "description": f"OpenTelemetry {subject} from the demo microservices.",
+        "description": DESCRIPTIONS[subject],
     }, result=True)
     dashboard_id = created.get("id")
     if not dashboard_id:
@@ -122,7 +130,7 @@ def parse_args(argv=None):
     parser.add_argument("--database-name", default="Observability",
                         help="KQL database that receives the OpenTelemetry tables (case-insensitive).")
     parser.add_argument("--definitions-dir", type=Path, default=REPO_ROOT / "fabric/dashboards",
-                        help="Directory containing metrics.json, logs.json and traces.json.")
+                        help="Directory containing one JSON definition per dashboard: " + ", ".join(SUBJECTS) + ".")
     return parser.parse_args(argv)
 
 

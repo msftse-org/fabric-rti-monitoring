@@ -1,0 +1,1112 @@
+{
+  "schema_version": 75,
+  "title": "Fabric RTI Agents",
+  "autoRefresh": {
+    "enabled": true,
+    "defaultInterval": "1m",
+    "minInterval": "30s"
+  },
+  "tiles": [
+    {
+      "id": "d76d00c8-151c-53c5-9250-a81729617f33",
+      "title": "Runs",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Agent runs (traces with invoke_agent spans).",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "abbac6fb-6d40-54dc-b3f6-30bc3ec60af1"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Runs",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "6ef4925f-667d-5237-80b3-188380b36ae4",
+      "title": "Failed runs",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "07a65612-a693-57f9-8972-d5ddc8ef50a3"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "FailedRuns",
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "eb63a568-e4f2-5e47-886c-7e275c8017fe",
+            "ruleName": "failed",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">",
+                "values": [
+                  "0"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "4695020b-457b-58d8-a9e6-1a56c0c118c7",
+      "title": "Handoffs",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 8,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Runs that involved more than one agent.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "8b378b1d-9487-5b06-8dde-f924e8351f73"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Handoffs",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "da5f1c54-2e6d-5c8a-b528-081634911978",
+      "title": "Tokens",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 12,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Input plus output tokens. No cost is estimated.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "312774cc-ed9f-5646-81af-b3f273b8766b"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Tokens",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "f5ce5e50-705f-5ca5-b61c-fe35a2013ef1",
+      "title": "p95 run (ms)",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 16,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "c60a4b21-03cc-5268-9dfd-f5bb76ca40fe"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "P95RunMs",
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "ec65b2e9-e0a9-5002-948e-b92790c02827",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": null,
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "9f6d4368-83b2-5e5d-90d6-9f719e1e5edf",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": null,
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "e28f8918-56a0-583b-8fe1-427d83f5d8fe",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "f896a0f0-b8a6-5303-9cbd-a0941f097e26",
+      "title": "Fabric RTI",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 20,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "markdownCard",
+      "markdownText": "[Metrics]({{url:metrics}}) · [Logs]({{url:logs}}) · [Traces]({{url:traces}}) · [Issues]({{url:issues}}) · [Releases]({{url:releases}}) · **Agents**\n\nRight-click a **TraceID** in *Recent runs* → **Cross-filter** for its steps.",
+      "visualOptions": {}
+    },
+    {
+      "id": "129e69fd-27d5-5526-947f-eeb02c07b925",
+      "title": "Runs per minute",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 0,
+        "y": 4,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "stackedcolumn",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "d1a12cdc-04c0-5c61-885b-ea3b6c15d363"
+      },
+      "visualOptions": {
+        "xColumn": "WindowStart",
+        "yColumns": [
+          "ok",
+          "failed"
+        ],
+        "seriesColumns": null,
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": [],
+        "seriesColors": {
+          "ok": "rgba(16,124,16,1)",
+          "failed": "rgba(209,52,56,1)"
+        }
+      }
+    },
+    {
+      "id": "c7701954-3552-5a97-a9d0-3c3bcc217dea",
+      "title": "Tokens per minute by model",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 12,
+        "y": 4,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "stackedcolumn",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "95d6e3ed-0f20-550e-b5b8-ade4ce898040"
+      },
+      "visualOptions": {
+        "xColumn": "WindowStart",
+        "yColumns": [
+          "Tokens"
+        ],
+        "seriesColumns": [
+          "Model"
+        ],
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "9d285073-b8d0-5d40-b859-834c600442db",
+      "title": "Models",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 0,
+        "y": 12,
+        "width": 12,
+        "height": 7
+      },
+      "visualType": "table",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "87219de4-62e1-5c05-a961-28954e4fb9e2"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "7868b7b3-8fce-526f-a1de-19d0438414d6",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "540050c7-40b8-5cc0-b920-ed5be4d3a96f",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "P95Ms",
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "179f37b1-e5fc-5279-b8ff-6ce3f11f9e72",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "a4a5d518-d377-5a0c-a0e7-f7b850043242",
+      "title": "Tools",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 12,
+        "y": 12,
+        "width": 12,
+        "height": 7
+      },
+      "visualType": "table",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "69bf2628-4374-5cb7-a177-dc600b7ebb24"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "4c058823-c55f-552f-b6c0-e8a79d1f4167",
+            "ruleName": "tool errors",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "ErrorRate",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "ErrorRate",
+                "operator": ">=",
+                "values": [
+                  "0.05"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7868b7b3-8fce-526f-a1de-19d0438414d6",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "540050c7-40b8-5cc0-b920-ed5be4d3a96f",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "P95Ms",
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "179f37b1-e5fc-5279-b8ff-6ce3f11f9e72",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "P95Ms",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "P95Ms",
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "4c38f13d-aa0e-5f8f-a7bd-c8f98ec3460f",
+      "title": "Recent runs",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 0,
+        "y": 19,
+        "width": 24,
+        "height": 8
+      },
+      "visualType": "table",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "1e7e9b97-6c6f-5c05-b21e-c2971e2311dd"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "1bf465b0-fa3a-5e57-bd03-f2e0e3ebeadc",
+            "ruleName": "Outcome=failed",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Outcome",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Outcome",
+                "operator": "==",
+                "values": [
+                  "failed"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "d03a0d3b-a6b4-547a-9e28-e920d2bfaf09",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "d093e27d-6e5c-5f0e-bacb-74ace4c4bad6",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "DurationMs",
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7914c2fe-5f18-5c8a-bbd6-6c1be61d3120",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": false,
+        "crossFilter": [
+          {
+            "interaction": "column",
+            "property": "TraceID",
+            "parameterId": "1afe039b-458e-5af9-be77-f83716efc9c7",
+            "disabled": false
+          }
+        ],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "0cff25be-fa1c-5dc4-86f7-8903e0207c6a",
+      "title": "Steps in the selected run",
+      "pageId": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "layout": {
+        "x": 0,
+        "y": 27,
+        "width": 24,
+        "height": 9
+      },
+      "visualType": "table",
+      "description": "Every agent, model call and tool call of the selected run, in order.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "e8b9a06d-05d9-5790-87a8-94fbd47906ab"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "29d62bb0-23c9-562a-9aa8-d59dbb10c3c0",
+            "ruleName": "Status=STATUS_CODE_ERROR",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Status",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Status",
+                "operator": "==",
+                "values": [
+                  "STATUS_CODE_ERROR"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "d03a0d3b-a6b4-547a-9e28-e920d2bfaf09",
+            "ruleName": "fast",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": "<",
+                "values": [
+                  "1000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "d093e27d-6e5c-5f0e-bacb-74ace4c4bad6",
+            "ruleName": "slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": ">=",
+                "values": [
+                  "1000"
+                ]
+              },
+              {
+                "column": "DurationMs",
+                "operator": "<",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "7914c2fe-5f18-5c8a-bbd6-6c1be61d3120",
+            "ruleName": "very slow",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "DurationMs",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "DurationMs",
+                "operator": ">=",
+                "values": [
+                  "3000"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    }
+  ],
+  "baseQueries": [
+    {
+      "id": "4111bbbf-f0ec-5601-b99f-bd30cf41b8a9",
+      "queryId": "2de1902d-7864-5849-9a62-143c0232cdd7",
+      "variableName": "_agent_kpis"
+    }
+  ],
+  "parameters": [
+    {
+      "kind": "duration",
+      "id": "f2df973a-88c5-5aab-9855-6e985193d5f9",
+      "displayName": "Time range",
+      "description": "",
+      "beginVariableName": "_startTime",
+      "endVariableName": "_endTime",
+      "defaultValue": {
+        "kind": "dynamic",
+        "count": 1,
+        "unit": "hours"
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "727a2ca6-deb8-585c-abae-ea87bb4c5fdd",
+      "displayName": "Environment",
+      "description": "Deployment environment reported by the OpenTelemetry resource.",
+      "variableName": "_environment",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "5212702c-b8fc-5569-9b45-d27d466478fe"
+        },
+        "columns": {
+          "value": "Environment"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "45f983d5-b948-58d0-8f2a-6e362a1eb476",
+      "displayName": "Service",
+      "description": "Microservice (service.name).",
+      "variableName": "_service",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "static",
+        "values": [
+          {
+            "value": "gateway"
+          },
+          {
+            "value": "checkout"
+          },
+          {
+            "value": "inventory"
+          },
+          {
+            "value": "payment"
+          },
+          {
+            "value": "shipping"
+          },
+          {
+            "value": "notifications"
+          },
+          {
+            "value": "assistant"
+          }
+        ]
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "1afe039b-458e-5af9-be77-f83716efc9c7",
+      "displayName": "Run",
+      "description": "Agent run whose steps are listed. Defaults to the newest; right-click a TraceID in Recent runs → Cross-filter.",
+      "variableName": "_run",
+      "selectionType": "scalar",
+      "includeAllOption": false,
+      "defaultValue": {
+        "kind": "query-result"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "f45bed3a-a65d-5ce2-8872-5ce6567fcbd7"
+        },
+        "columns": {
+          "value": "TraceID",
+          "label": "Label"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1",
+      "kind": "kusto-trident",
+      "name": "observability",
+      "clusterUri": "https://<eventhouse>.kusto.fabric.microsoft.com",
+      "databaseArtifactId": "00000000-0000-0000-0000-000000000000",
+      "database": "00000000-0000-0000-0000-000000000000",
+      "workspace": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "pages": [
+    {
+      "id": "850bd8c9-f06f-5c1e-84d8-ff5f97b103cb",
+      "name": "Agents"
+    }
+  ],
+  "queries": [
+    {
+      "id": "5212702c-b8fc-5569-9b45-d27d466478fe",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| distinct Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| order by Environment asc",
+      "usedVariables": [
+        "_endTime",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "2de1902d-7864-5849-9a62-143c0232cdd7",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentRuns(now() - _startTime)\n| where Start between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Runs=count(), FailedRuns=countif(Failed), Handoffs=countif(Handoff),\n    Tokens=sum(InputTokens + OutputTokens), P95RunMs=round(percentile(DurationMs, 95), 0)",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "f45bed3a-a65d-5ce2-8872-5ce6567fcbd7",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentRuns(now() - _startTime)\n| where Start between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| top 200 by Start desc\n| project TraceID, Label=strcat(format_datetime(Start, \"HH:mm:ss\"), \" · \", strcat_array(Agents, \" > \"), \" · \", iff(Failed, \"failed\", \"ok\"))",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "abbac6fb-6d40-54dc-b3f6-30bc3ec60af1",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_agent_kpis\n| project Runs",
+      "usedVariables": [
+        "_agent_kpis"
+      ]
+    },
+    {
+      "id": "07a65612-a693-57f9-8972-d5ddc8ef50a3",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_agent_kpis\n| project FailedRuns",
+      "usedVariables": [
+        "_agent_kpis"
+      ]
+    },
+    {
+      "id": "8b378b1d-9487-5b06-8dde-f924e8351f73",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_agent_kpis\n| project Handoffs",
+      "usedVariables": [
+        "_agent_kpis"
+      ]
+    },
+    {
+      "id": "312774cc-ed9f-5646-81af-b3f273b8766b",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_agent_kpis\n| project Tokens",
+      "usedVariables": [
+        "_agent_kpis"
+      ]
+    },
+    {
+      "id": "c60a4b21-03cc-5268-9dfd-f5bb76ca40fe",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_agent_kpis\n| project P95RunMs",
+      "usedVariables": [
+        "_agent_kpis"
+      ]
+    },
+    {
+      "id": "d1a12cdc-04c0-5c61-885b-ea3b6c15d363",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentRuns(now() - _startTime)\n| where Start between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize ok=countif(not(Failed)), failed=countif(Failed) by WindowStart=bin(Start, 1m)\n| order by WindowStart asc",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "95d6e3ed-0f20-550e-b5b8-ade4ce898040",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentSpans(now() - _startTime)\n| where StartTime between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| where Operation == \"chat\"\n| summarize Tokens=sum(InputTokens + OutputTokens) by WindowStart=bin(StartTime, 1m), Model\n| order by WindowStart asc",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "87219de4-62e1-5c05-a961-28954e4fb9e2",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentSpans(now() - _startTime)\n| where StartTime between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| where Operation == \"chat\"\n| summarize Calls=count(), Errors=countif(Failed), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens),\n    P95Ms=round(percentile(DurationMs, 95), 1) by Model, Environment\n| order by Calls desc\n| take 50",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "69bf2628-4374-5cb7-a177-dc600b7ebb24",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentSpans(now() - _startTime)\n| where StartTime between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| where Operation == \"execute_tool\"\n| summarize Calls=count(), Errors=countif(Failed), P95Ms=round(percentile(DurationMs, 95), 1) by Tool, Agent, Environment\n| extend ErrorRate=round(todouble(Errors) / Calls, 4)\n| order by Calls desc\n| take 50",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "1e7e9b97-6c6f-5c05-b21e-c2971e2311dd",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "AgentRuns(now() - _startTime)\n| where Start between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| top 100 by Start desc\n| project Start, Outcome=iff(Failed, \"failed\", \"ok\"), EntryAgent, Agents=strcat_array(Agents, \" > \"),\n    Tools=strcat_array(Tools, \", \"), ModelCalls, ToolCalls, InputTokens, OutputTokens, DurationMs=round(DurationMs, 0), TraceID",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "e8b9a06d-05d9-5790-87a8-94fbd47906ab",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "let selected_trace = _run;\nAgentRun(selected_trace)\n| where StartTime between ((_startTime - 5m) .. (_endTime + 5m))\n| project Step, Operation, OffsetMs=round(OffsetMs, 1), DurationMs=round(DurationMs, 1), InputTokens, OutputTokens, Status\n| take 200",
+      "usedVariables": [
+        "_endTime",
+        "_run",
+        "_startTime"
+      ]
+    }
+  ],
+  "embeddedApps": []
+}

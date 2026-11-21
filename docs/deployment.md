@@ -376,10 +376,13 @@ Grafana Admin. Managed Grafana Standard includes the Azure Data Explorer plugin.
    file as a dashboard.
 4. Open **Dashboards > New > Import** and import
    [`grafana/metrics.json`](../grafana/metrics.json),
-   [`grafana/logs.json`](../grafana/logs.json), and
-   [`grafana/traces.json`](../grafana/traces.json) one at a time. For each, map
+   [`grafana/logs.json`](../grafana/logs.json),
+   [`grafana/traces.json`](../grafana/traces.json),
+   [`grafana/issues.json`](../grafana/issues.json),
+   [`grafana/releases.json`](../grafana/releases.json), and
+   [`grafana/agents.json`](../grafana/agents.json) one at a time. For each, map
    the **Fabric Eventhouse** data source input (`DS_FABRIC`) to the data source
-   just created. The shared `fabric-rti` tag adds links between the three dashboards.
+   just created. The shared `fabric-rti` tag adds links between the dashboards.
    These links keep the time range.
 5. Choose a time window containing the run, then select **KQL database**,
    **Environment**, and **Service**:
@@ -392,6 +395,16 @@ Grafana Admin. Managed Grafana Standard includes the Azure Data Explorer plugin.
    - **Fabric RTI Traces** has **Find a trace** (**Show** most recent, errors, or
      slowest) and a service map. It also has a trace waterfall with each span's
      logs, traces per minute, and p95 self time by operation.
+   - **Fabric RTI Issues** groups failed spans into issues with status, lifecycle
+     alerts, and the occurrences of a selected issue. See
+     [issues and alerts](issues-and-alerts.md).
+   - **Fabric RTI Releases** compares each service's newest version with the
+     previous one. See [release health](release-health.md).
+   - **Fabric RTI Agents** shows AI agent runs, tokens by model, tools, and the
+     steps of a selected run. See [AI agent tracing](ai-agents.md).
+
+   Latency is coloured on one scale everywhere: green under 1 s, amber under 3 s,
+   red beyond.
 
    A blank **Trace ID** selects the newest complete multi-span trace. Click a
    TraceID in any table to open that trace in the waterfall or its logs.
@@ -402,9 +415,10 @@ API does not perform that selection. See [Managed Grafana data sources](https://
 
 ## 9. Publish the Fabric Real-Time Dashboards (optional)
 
-The same views are also available natively in Fabric as three subject-specific
-Real-Time Dashboards: **Fabric RTI Metrics**, **Fabric RTI Logs**, and
-**Fabric RTI Traces**. Their placeholder-data-source definitions live in
+The same views are also available natively in Fabric as six subject-specific
+Real-Time Dashboards: **Fabric RTI Metrics**, **Fabric RTI Logs**,
+**Fabric RTI Traces**, **Fabric RTI Issues**, **Fabric RTI Releases**, and
+**Fabric RTI Agents**. Their placeholder-data-source definitions live in
 [`fabric/dashboards/`](../fabric/dashboards/). The deploy script creates any
 missing items, resolves the navigation links between them, binds each to the
 bootstrapped KQL database, and replaces the definitions of existing items with
@@ -417,7 +431,7 @@ python3 scripts/deploy-fabric-dashboard.py \
   --workspace-id "$FABRIC_WORKSPACE_ID" --database-name "$KUSTO_DATABASE"
 ```
 
-The script uses the Azure CLI sign-in and prints all three dashboard URLs. It
+The script uses the Azure CLI sign-in and prints all six dashboard URLs. It
 requires permission to create and update items in the workspace. It never
 deletes items or changes permissions. Replacing a definition discards portal
 edits, so download any changes you want to keep first (**Manage > Download

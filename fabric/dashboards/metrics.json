@@ -364,7 +364,7 @@
         "height": 4
       },
       "visualType": "markdownCard",
-      "markdownText": "**Metrics** · [Logs]({{url:logs}}) · [Traces]({{url:traces}})\n\nRight-click a Service in *Service health* → **Cross-filter** to focus on it.",
+      "markdownText": "**Metrics** · [Logs]({{url:logs}}) · [Traces]({{url:traces}}) · [Issues]({{url:issues}}) · [Releases]({{url:releases}}) · [Agents]({{url:agents}})\n\nRight-click a Service in *Service health* → **Cross-filter** to focus on it.",
       "visualOptions": {}
     },
     {
@@ -698,8 +698,8 @@
             ]
           },
           {
-            "id": "48a3a044-f18b-5594-a6bc-d4f279994cd5",
-            "ruleName": "healthy",
+            "id": "40438dca-4b50-5ab8-93c4-f7344a096713",
+            "ruleName": "fast",
             "applyTo": "cells",
             "visualType": "table",
             "ruleType": "colorByCondition",
@@ -715,14 +715,14 @@
                 "column": "P95Ms",
                 "operator": "<",
                 "values": [
-                  "500"
+                  "1000"
                 ]
               }
             ]
           },
           {
-            "id": "d27af148-2b3c-5563-a5d3-bcba353d6f55",
-            "ruleName": "warning",
+            "id": "95fa0643-b22b-5b53-87dc-ec9395184139",
+            "ruleName": "slow",
             "applyTo": "cells",
             "visualType": "table",
             "ruleType": "colorByCondition",
@@ -738,21 +738,21 @@
                 "column": "P95Ms",
                 "operator": ">=",
                 "values": [
-                  "500"
+                  "1000"
                 ]
               },
               {
                 "column": "P95Ms",
                 "operator": "<",
                 "values": [
-                  "1000"
+                  "3000"
                 ]
               }
             ]
           },
           {
-            "id": "28bedbbb-8c5c-5c64-a889-2715c616634f",
-            "ruleName": "critical",
+            "id": "eb5c2a33-28f9-550a-9af2-8b27380002d6",
+            "ruleName": "very slow",
             "applyTo": "cells",
             "visualType": "table",
             "ruleType": "colorByCondition",
@@ -768,7 +768,7 @@
                 "column": "P95Ms",
                 "operator": ">=",
                 "values": [
-                  "1000"
+                  "3000"
                 ]
               }
             ]
@@ -872,6 +872,9 @@
           },
           {
             "value": "notifications"
+          },
+          {
+            "value": "assistant"
           }
         ]
       },
