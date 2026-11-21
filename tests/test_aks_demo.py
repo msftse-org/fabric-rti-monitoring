@@ -355,9 +355,11 @@ class ContractTests(unittest.TestCase):
         template = (CHART / "templates/collector.yaml").read_text()
         self.assertRegex(config, r"file_storage/queue:\n    directory: /var/lib/otelcol/queue\n")
         self.assertIn("      storage: file_storage/queue", config)
+        # Longer than the 30s termination grace period, so a replacement pod waits for the lock.
+        self.assertIn("    timeout: 45s\n", config)
         self.assertIn("extensions: [health_check, file_storage/queue]", config)
         self.assertIn("mountPath: /var/lib/otelcol/queue", template)
-        self.assertIn("type: Recreate", template)
+        self.assertRegex(template, r"rollingUpdate:\n      maxSurge: 0\n      maxUnavailable: 1")
         self.assertIn("kind: PersistentVolumeClaim", template)
         self.assertIn('accessModes: ["ReadWriteOnce"]', template)
         # The Container Apps collector has no disk and stays in memory.

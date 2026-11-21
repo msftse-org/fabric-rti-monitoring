@@ -322,3 +322,84 @@
     | project StartTime, Step, SpanName, Operation, Service, Agent, Model, Tool, OffsetMs, DurationMs, InputTokens, OutputTokens, Status=SpanStatus, SpanID, ParentID
     | order by StartTime asc
 }
+
+// ---------------------------------------------------------------------------
+// Investigation toolbox: task-shaped functions for AI agents and people. An MCP
+// client calls these by name instead of writing KQL against the raw tables.
+// ---------------------------------------------------------------------------
+
+.create-or-alter function with (folder='Toolbox', docstring='Health per service and environment: requests, error rate, p95, open issues, last seen, and a tier') ServiceHealth(lookback:timespan=1h) {
+    let openIssues = Issues(lookback)
+        | where Status != "resolved"
+        | summarize OpenIssues=dcount(Fingerprint) by Service, Environment;
+    Releases1m
+    | where WindowStart > ago(lookback)
+    | summarize Requests=sum(RequestCount), Errors=sum(ErrorCount), Digest=tdigest_merge(DurationDigest), LastSeen=max(LastSeen), Versions=make_set(Version) by Service, Environment
+    | extend ErrorRate=round(todouble(Errors) / Requests, 4), P95Ms=round(todouble(percentiles_array_tdigest(Digest, dynamic([95]))[0]), 1)
+    | join kind=leftouter openIssues on Service, Environment
+    | extend OpenIssues=coalesce(OpenIssues, 0)
+    | extend Tier=case(Requests < 50, "too few requests", ErrorRate <= 0.01, "healthy", ErrorRate <= 0.05, "degraded", "unhealthy")
+    | project Service, Environment, Tier, Requests, Errors, ErrorRate, P95Ms, OpenIssues, Versions, LastSeen
+    | order by ErrorRate desc
+}
+
+.create-or-alter function with (folder='Toolbox', docstring='The n unresolved issues with the most events in the lookback window') TopIssues(lookback:timespan=24h, n:long=10) {
+    Issues(lookback)
+    | where Status != "resolved"
+    | top n by Events desc
+    | project Fingerprint, Title, Culprit, Environment, Status, Events, FirstSeen, LastSeen, IntroducedIn, Versions, ExampleTraceID
+}
+
+.create-or-alter function with (folder='Toolbox', docstring='Recent occurrences of one issue with trace IDs, versions, and run IDs for drill-down') IssueDetail(fingerprint:string, lookback:timespan=24h) {
+    ErrorEvents(lookback)
+    | where Fingerprint == fingerprint
+    | top 50 by Timestamp desc
+    | project Timestamp, Title=strcat(ExceptionType, ": ", Message), Service, Environment, Version, SpanName, TraceID, SpanID, RunID
+}
+
+.create-or-alter function with (folder='Toolbox', docstring='Every span of one trace with offsets, status, exception, and correlated log count') TraceDetail(traceId:string) {
+    let spans = OTELTraces
+        | where TraceID == traceId and StartTime > ago(7d);
+    let runStart = toscalar(spans | summarize min(StartTime));
+    let logs = OTELLogs
+        | where TraceID == traceId and Timestamp > ago(7d)
+        | summarize Logs=count(), ErrorLogs=countif(SeverityNumber >= 17) by SpanID;
+    spans
+    | mv-apply Event=Events to typeof(dynamic) on (
+        summarize ExceptionType=take_anyif(tostring(Event.EventAttributes["exception.type"]), tostring(Event.EventName) == "exception"),
+            ExceptionMessage=take_anyif(tostring(Event.EventAttributes["exception.message"]), tostring(Event.EventName) == "exception")
+    )
+    | join kind=leftouter logs on SpanID
+    | extend Service=tostring(ResourceAttributes["service.name"]), OffsetMs=(StartTime - runStart) / 1ms, DurationMs=(EndTime - StartTime) / 1ms
+    | project StartTime, Service, SpanName, SpanKind, Status=SpanStatus, OffsetMs, DurationMs, ExceptionType, ExceptionMessage, Logs=coalesce(Logs, 0), ErrorLogs=coalesce(ErrorLogs, 0), SpanID, ParentID
+    | order by StartTime asc
+}
+
+.create-or-alter function with (folder='Toolbox', docstring='The newest failed spans with their issue, optionally for one service (empty for all)') RecentErrors(service:string="", lookback:timespan=1h) {
+    ErrorEvents(lookback)
+    | where isempty(service) or Service == service
+    | top 50 by Timestamp desc
+    | project Timestamp, Service, Environment, Version, SpanName, Title=strcat(ExceptionType, ": ", Message), Fingerprint, TraceID
+}
+
+// ---------------------------------------------------------------------------
+// Telemetry volume: what drives ingestion and storage on the capacity.
+// ---------------------------------------------------------------------------
+
+.create-or-alter function with (folder='Toolbox', docstring='Rows and estimated uncompressed bytes per hour, signal, service, and environment') TelemetryVolume(lookback:timespan=24h) {
+    union
+        (OTELTraces | where StartTime > ago(lookback) | extend Signal="traces", Time=StartTime),
+        (OTELLogs | where Timestamp > ago(lookback) | extend Signal="logs", Time=Timestamp),
+        (OTELMetrics | where Timestamp > ago(lookback) | extend Signal="metrics", Time=Timestamp)
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"]), Bytes=estimate_data_size(*)
+    | summarize Rows=count(), EstimatedBytes=sum(Bytes) by WindowStart=bin(Time, 1h), Signal, Service, Environment
+}
+
+.create-or-alter function with (folder='Toolbox', docstring='Oldest and newest stored row and row count per raw table, showing the retention in effect') TelemetryCoverage() {
+    union
+        (OTELTraces | summarize Rows=count(), Oldest=min(ingestion_time()), Newest=max(ingestion_time()) | extend Table="OTELTraces"),
+        (OTELLogs | summarize Rows=count(), Oldest=min(ingestion_time()), Newest=max(ingestion_time()) | extend Table="OTELLogs"),
+        (OTELMetrics | summarize Rows=count(), Oldest=min(ingestion_time()), Newest=max(ingestion_time()) | extend Table="OTELMetrics")
+    | extend StoredDays=round((Newest - Oldest) / 1d, 1)
+    | project Table, Rows, Oldest, Newest, StoredDays
+}

@@ -187,6 +187,22 @@ class ReleaseSchemaTests(unittest.TestCase):
         self.assertIn("name: FAILURE_MULTIPLIER", template)
 
 
+class ToolboxSchemaTests(unittest.TestCase):
+    def test_toolbox_functions_exist_and_are_documented_for_agents(self):
+        functions = [c for c in bootstrap.split_schema_commands(SCHEMA) if "folder='Toolbox'" in c.splitlines()[0]]
+        names = {re.search(r"\) (\w+)\(", c.splitlines()[0]).group(1) for c in functions}
+        expected = {"ServiceHealth", "TopIssues", "IssueDetail", "TraceDetail", "RecentErrors",
+                    "TelemetryVolume", "TelemetryCoverage"}
+        self.assertEqual(names, expected)
+        skill = (ROOT / ".github/skills/otel-eventhouse-investigation/SKILL.md").read_text()
+        for name in expected | {"Issues", "IssueAlerts", "ReleaseComparison", "AgentRuns", "AgentRun"}:
+            self.assertIn(f"`{name}(", skill)
+        # Detail functions stay bounded.
+        for name in ("IssueDetail", "RecentErrors"):
+            body = next(c for c in functions if f") {name}(" in c.splitlines()[0])
+            self.assertIn("top 50 by Timestamp desc", body)
+
+
 class AgentSchemaTests(unittest.TestCase):
     def test_agent_functions_exist_and_read_only_genai_metadata(self):
         functions = [c for c in bootstrap.split_schema_commands(SCHEMA) if "folder='Agents'" in c.splitlines()[0]]

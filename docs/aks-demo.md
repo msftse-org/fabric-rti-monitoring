@@ -194,8 +194,8 @@ The collector writes its export queue to the `otel-collector-queue`
 PersistentVolumeClaim (`collector.persistentQueue`, 2 GiB on the cluster's
 default storage class, `managed-csi` on AKS). A batch the collector accepted is
 removed from disk only after Fabric acknowledges it, so restarts, reschedules,
-upgrades, and Fabric throttling do not lose it. The deployment uses the
-`Recreate` strategy because one pod owns the disk at a time; a collector upgrade
+upgrades, and Fabric throttling do not lose it. The deployment rolls out with
+`maxSurge: 0` because one pod owns the disk at a time; a collector upgrade
 therefore pauses intake for the few seconds the new pod takes to start, and apps
 retry in that window. Keep these limits in mind:
 

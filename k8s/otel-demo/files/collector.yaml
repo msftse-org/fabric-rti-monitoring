@@ -13,7 +13,9 @@ extensions:
   # collector.persistentQueue.enabled=false). Accept to disk first, export after.
   file_storage/queue:
     directory: /var/lib/otelcol/queue
-    timeout: 1s
+    # Wait for the previous pod to release the queue's file lock during a
+    # rollout or reschedule (its grace period is 30s) instead of crash-looping.
+    timeout: 45s
     fsync: false
     compaction:
       on_start: true

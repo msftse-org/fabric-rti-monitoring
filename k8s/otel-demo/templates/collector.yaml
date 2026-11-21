@@ -35,8 +35,13 @@ metadata:
 spec:
   replicas: 1
   # One pod owns the on-disk queue at a time; a ReadWriteOnce disk cannot be shared.
+  # maxSurge 0 stops the old pod before the new one starts. (Switching an installed
+  # Deployment to type Recreate fails under server-side apply, so this stays RollingUpdate.)
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: otel-collector
