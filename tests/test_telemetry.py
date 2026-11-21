@@ -181,7 +181,7 @@ class ServingAssetTests(unittest.TestCase):
         dashboards = self.dashboards()
         self.assertEqual(sorted(path.name for path in (ROOT / "grafana").glob("*.json")
                                 if "panels" in json.loads(path.read_text())),
-                         ["logs.json", "metrics.json", "traces.json"])
+                         ["agents.json", "issues.json", "logs.json", "metrics.json", "releases.json", "traces.json"])
         for name, dashboard in dashboards.items():
             self.assertEqual(dashboard["uid"], f"fabric-rti-{name}")
             self.assertIn("fabric-rti", dashboard["tags"])
@@ -223,6 +223,48 @@ class ServingAssetTests(unittest.TestCase):
         self.assertEqual(used_functions, {"LogsOverview", "RequestsOverview", "MetricDurationOverview"})
         for name in used_functions:
             self.assertRegex(schema, rf"function with .*?\b{name}\(")
+
+    def test_issue_release_and_agent_dashboards_follow_the_shared_rules(self):
+        for name in ("issues", "releases", "agents"):
+            dashboard = json.loads((ROOT / "grafana" / f"{name}.json").read_text())
+            with self.subTest(dashboard=name):
+                self.assertEqual(dashboard["uid"], f"fabric-rti-{name}")
+                self.assertEqual(dashboard["tags"], ["fabric-rti", name])
+                self.assertEqual(dashboard["links"][0]["tags"], ["fabric-rti"])
+                self.assertEqual([item["name"] for item in dashboard["__inputs"]], ["DS_FABRIC"])
+                service = next(v for v in dashboard["templating"]["list"] if v["name"] == "service")
+                self.assertIn("assistant", [option["value"] for option in service["options"]])
+                for panel, target in self.targets(dashboard):
+                    query = target["query"]
+                    single_item = "AgentRun(selected_trace)" in query
+                    with self.subTest(panel=panel["title"]):
+                        self.assertEqual(target["queryType"], "KQL")
+                        if not single_item:
+                            # Every panel honours the dashboard's environment and service filters.
+                            self.assertIn("${environment:singlequote}", query)
+                            self.assertIn("${service:singlequote}", query)
+                        self.assertNotRegex(query, r"\$__timeFilter\(now\(\)\)")
+                        if target["resultFormat"] == "time_series":
+                            self.assertIn("| order by WindowStart asc", query)
+                            self.assertRegex(query, r'Series=strcat\(Environment, " / ')
+                        if target["resultFormat"] == "table" and panel["type"] == "table":
+                            limits = [int(n) for n in re.findall(r"\| (?:take|top) (\d+)", query)]
+                            self.assertTrue(limits and max(limits) <= 200, "tables must be bounded")
+                        if "Issues1h" in query:
+                            # Hourly bins: include the bin that holds the start of the range.
+                            self.assertIn("bin($__timeFrom, 1h)", query)
+
+    def test_latency_is_coloured_green_under_1s_amber_under_3s_red_beyond(self):
+        expected = [{"color": "green", "value": None}, {"color": "orange", "value": 1000}, {"color": "red", "value": 3000}]
+        metrics = self.dashboards()["metrics"]
+        latency_series = [p for p in metrics["panels"] if p["type"] == "timeseries" and p["fieldConfig"]["defaults"].get("unit") == "ms"]
+        self.assertTrue(latency_series)
+        for panel in latency_series:
+            self.assertEqual(panel["fieldConfig"]["defaults"]["thresholds"]["steps"], expected)
+        health = next(p for p in metrics["panels"] if p["title"] == "Service health")
+        p95 = next(o for o in health["fieldConfig"]["overrides"] if o["matcher"]["options"] == "P95Ms")
+        self.assertEqual(next(x["value"] for x in p95["properties"] if x["id"] == "thresholds")["steps"], expected)
+        self.assertTrue(any(p["title"] == "Telemetry volume" for p in metrics["panels"]))
 
     def test_traces_dashboard_has_waterfall_and_service_map(self):
         dashboard = self.dashboards()["traces"]
