@@ -8,7 +8,8 @@
     "workloadIdentity",
     "images",
     "apps",
-    "loadgen"
+    "loadgen",
+    "collector"
   ],
   "properties": {
     "global": {
@@ -121,7 +122,8 @@
         "enabled",
         "requestsPerSecond",
         "checkoutRatio",
-        "runIdRotationSeconds"
+        "runIdRotationSeconds",
+        "assistRatio"
       ],
       "properties": {
         "enabled": {
@@ -141,6 +143,42 @@
           "type": "integer",
           "minimum": 60,
           "maximum": 86400
+        },
+        "assistRatio": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "collector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "persistentQueue"
+      ],
+      "properties": {
+        "persistentQueue": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "size",
+            "storageClassName"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "size": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,3}(Mi|Gi)$"
+            },
+            "storageClassName": {
+              "type": "string",
+              "pattern": "^([a-z0-9]([-a-z0-9.]{0,61}[a-z0-9])?)?$"
+            }
+          }
         }
       }
     }

@@ -3,10 +3,21 @@
 #      the Container Apps managed identity endpoint.
 #   2. resource/k8s stamps every record with the cluster name.
 #   3. transform/demo also keeps the Kubernetes keys apps set via the downward API.
+#   4. The export queue is on disk (file_storage), so a collector restart does not
+#      drop telemetry that was accepted but not yet ingested.
 # The filter/synthetic selector must stay identical to cloud.yaml.
 extensions:
   health_check:
     endpoint: 0.0.0.0:13133
+  # The chart mounts a PersistentVolumeClaim here (or an emptyDir when
+  # collector.persistentQueue.enabled=false). Accept to disk first, export after.
+  file_storage/queue:
+    directory: /var/lib/otelcol/queue
+    timeout: 1s
+    fsync: false
+    compaction:
+      on_start: true
+      directory: /var/lib/otelcol/queue
 
 receivers:
   otlp:
@@ -25,7 +36,7 @@ processors:
     traces:
       span:
         - 'resource.attributes["demo.synthetic"] != true'
-        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.inventory" and name != "demo.payment" and name != "demo.shipping" and name != "demo.notifications" and name != "demo.postgres.query"'
+        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.inventory" and name != "demo.payment" and name != "demo.shipping" and name != "demo.notifications" and name != "demo.postgres.query" and name != "demo.assistant" and not IsMatch(name, "^(invoke_agent|chat|execute_tool) [A-Za-z0-9._-]{1,64}$")'
       spanevent:
         - 'name != "exception"'
     logs:
@@ -48,7 +59,8 @@ processors:
       - context: span
         statements:
           - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic", "k8s.cluster.name", "k8s.namespace.name", "k8s.deployment.name", "k8s.pod.name", "k8s.node.name"])
-          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id"])
+          # GenAI semantic-convention metadata only: never prompts, completions, or tool arguments.
+          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id", "gen_ai.operation.name", "gen_ai.provider.name", "gen_ai.request.model", "gen_ai.response.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.response.finish_reasons", "gen_ai.agent.name", "gen_ai.tool.name", "gen_ai.tool.type"])
           - set(status.message, "")
       # Exception events are the one span event kept, for issue grouping. Only the
       # type and message survive, and variable values in the message are replaced
@@ -96,7 +108,9 @@ exporters:
     sending_queue:
       enabled: true
       num_consumers: 4
-      queue_size: 128
+      # Batches, persisted by file_storage/queue until the exporter succeeds.
+      queue_size: 1000
+      storage: file_storage/queue
     retry_on_failure:
       enabled: true
       initial_interval: 2s
@@ -104,7 +118,7 @@ exporters:
       max_elapsed_time: 2m
 
 service:
-  extensions: [health_check]
+  extensions: [health_check, file_storage/queue]
   telemetry:
     logs:
       level: info

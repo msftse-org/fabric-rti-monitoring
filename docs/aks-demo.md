@@ -11,11 +11,13 @@ flowchart LR
   subgraph AKS["AKS cluster, namespace otel-demo"]
     L[loadgen] -->|HTTP + baggage| G[gateway]
     G -->|checkout only| C[checkout]
+    G -->|assist only| A[assistant]
     C --> I[inventory]
     I --> P[payment]
     P --> S[shipping]
     S --> N[notifications]
-    G & C & I & P & S & N -->|OTLP/HTTP| O[otel-collector]
+    G & C & I & P & S & N & A -->|OTLP/HTTP| O[otel-collector]
+    O --- Q[(queue disk)]
   end
   O -->|workload identity token| E[Microsoft Entra ID]
   O -->|managed streaming| K[(Fabric KQL database)]
@@ -23,15 +25,19 @@ flowchart LR
 
 | Component | What it does |
 | --- | --- |
-| `gateway`, `checkout`, `inventory`, `payment`, `shipping`, `notifications` | Six independent HTTP deployments using one Python file ([`shop.py`](../k8s/otel-demo/files/shop.py)) instrumented with the OpenTelemetry SDK. Each hop produces a server span, a log, and metric updates; payment adds a simulated `demo.postgres.query` client span. W3C trace context and baggage flow between services. No real orders, payments, or notifications are sent. |
-| `loadgen` | Standard-library traffic generator ([`loadgen.py`](../k8s/otel-demo/files/loadgen.py)). Sends 1 request/s by default, half through the checkout chain and half as gateway-only browse requests, and rotates the `demo.run_id` baggage hourly. |
-| `otel-collector` | OpenTelemetry Collector Contrib v0.141.0 with an [AKS variant](../k8s/otel-demo/files/collector.yaml) of the cloud configuration. It keeps the same synthetic filter and contract, stamps `k8s.cluster.name`, and keeps the `k8s.*` attributes apps set through the Kubernetes downward API. |
+| `gateway`, `checkout`, `inventory`, `payment`, `shipping`, `notifications` | Six independent HTTP deployments using one Python file ([`shop.py`](../k8s/otel-demo/files/shop.py)) instrumented with the OpenTelemetry SDK. Each hop produces a server span, a log, and metric updates; payment adds a simulated `demo.postgres.query` client span. W3C trace context and baggage flow between services. No real orders, payments, or notifications are sent. A failing hop records an OpenTelemetry `exception` event with a typed error, which feeds [issue grouping](issues-and-alerts.md). |
+| `assistant` | The same file in a seventh role: a synthetic AI support agent that emits OpenTelemetry GenAI spans (`invoke_agent`, `chat`, `execute_tool`), including handoffs between two agents. No model is called. See [AI agent tracing](ai-agents.md). |
+| `loadgen` | Standard-library traffic generator ([`loadgen.py`](../k8s/otel-demo/files/loadgen.py)). Sends 1 request/s by default: 10% as `assist` conversations with the assistant, and of the rest half through the checkout chain and half as gateway-only browse requests. It rotates the `demo.run_id` baggage hourly. |
+| `otel-collector` | OpenTelemetry Collector Contrib v0.141.0 with an [AKS variant](../k8s/otel-demo/files/collector.yaml) of the cloud configuration. It keeps the same synthetic filter and contract, stamps `k8s.cluster.name`, and keeps the `k8s.*` attributes apps set through the Kubernetes downward API. Its export queue is on a 2 GiB managed disk (`file_storage`), so telemetry it accepted survives a pod restart or reschedule. |
 
 About 7% of requests fail (payment database query failures, service
 errors, and failed browse calls) and 3% of hops have latency spikes, so error and
 latency panels have signal. Failures propagate upstream: a failed payment query
 also marks its payment, inventory, checkout, and gateway spans as errors and
-prevents shipping and notification calls for that request.
+prevents shipping and notification calls for that request. `apps.failureMultiplier`
+scales every simulated failure rate (0 to 10) and `apps.version` sets
+`service.version`, to demonstrate good and bad releases in
+[release health](release-health.md).
 
 ## How it fits the existing deployment
 
@@ -127,7 +133,8 @@ helm upgrade --install otel-demo k8s/otel-demo \
 kubectl get pods --namespace otel-demo
 ```
 
-All eight pods should become `Running` within a few minutes. The chart refuses to
+All nine pods should become `Running` within a few minutes, and the
+`otel-collector-queue` claim `Bound`. The chart refuses to
 install into any other namespace, because the federated credential trusts only
 `otel-demo`.
 
@@ -181,6 +188,24 @@ time-series dimensions. On **Traces**, the Grafana service map and the Fabric
 **Calls by dependency** chart show the same call graph, including payment's
 database dependency.
 
+## Durable export queue
+
+The collector writes its export queue to the `otel-collector-queue`
+PersistentVolumeClaim (`collector.persistentQueue`, 2 GiB on the cluster's
+default storage class, `managed-csi` on AKS). A batch the collector accepted is
+removed from disk only after Fabric acknowledges it, so restarts, reschedules,
+upgrades, and Fabric throttling do not lose it. The deployment uses the
+`Recreate` strategy because one pod owns the disk at a time; a collector upgrade
+therefore pauses intake for the few seconds the new pod takes to start, and apps
+retry in that window. Keep these limits in mind:
+
+* The disk is zonal. If its node's zone fails, the queue waits for the disk.
+* Replay after a crash can send a batch twice. The views count rows, so expect
+  rare duplicates rather than gaps.
+* Set `collector.persistentQueue.enabled=false` for an `emptyDir` queue that
+  survives container restarts only.
+* The Container Apps collector has no disk; its queue stays in memory.
+
 ## Tuning, pausing, and cost
 
 Change the traffic with Helm values (see [`values.yaml`](../k8s/otel-demo/values.yaml)):
@@ -213,8 +238,9 @@ Managed or sandbox subscriptions can run cost automation that stops clusters on
 a schedule. A stopped cluster sends no telemetry, and `kubectl` times out. Check
 with `az aks show --resource-group "$RESOURCE_GROUP" --name "$AKS_CLUSTER" --query powerState.code`
 and run `az aks start` when you need the demo again. Pods start again with the
-cluster, and records still queued in the collector when the cluster stopped are
-lost. The collector can take a few extra minutes to return, because its pod is
+cluster. Records still queued in the collector when the cluster stopped are on its
+queue disk and are exported once it is back; records the apps had not yet sent
+to the collector are lost. The collector can take a few extra minutes to return, because its pod is
 created only after the workload identity webhook is running; Kubernetes retries
 automatically. Do not work around your organization's cost controls.
 

@@ -254,3 +254,71 @@
     | extend ErrorFreeDelta=round(CurrentErrorFreeRate - PreviousErrorFreeRate, 4), P95DeltaMs=round(CurrentP95Ms - PreviousP95Ms, 1)
     | extend Verdict=case(isempty(Previous), "first release", CurrentTier == "too few requests", "too few requests", ErrorFreeDelta <= -0.01, "worse", ErrorFreeDelta >= 0.01, "better", "same")
 }
+
+// ---------------------------------------------------------------------------
+// AI agents: runs, models, tools, and a per-run waterfall from OpenTelemetry
+// GenAI spans (invoke_agent, chat, execute_tool). Token counts only: no cost,
+// because model prices change faster than a dashboard does. No prompt or
+// completion text is stored; the collector drops it.
+// ---------------------------------------------------------------------------
+
+.create-or-alter function with (folder='Agents', docstring='GenAI spans with operation, agent, model, tool, tokens, duration, and status') AgentSpans(lookback:timespan=1h) {
+    OTELTraces
+    | where StartTime > ago(lookback)
+    | where ResourceAttributes["demo.synthetic"] == true and isnotempty(TraceAttributes["gen_ai.operation.name"])
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"]), Version=tostring(ResourceAttributes["service.version"])
+    | extend Operation=tostring(TraceAttributes["gen_ai.operation.name"]), Agent=tostring(TraceAttributes["gen_ai.agent.name"]), Model=tostring(coalesce(TraceAttributes["gen_ai.response.model"], TraceAttributes["gen_ai.request.model"])), Tool=tostring(TraceAttributes["gen_ai.tool.name"])
+    | extend InputTokens=tolong(TraceAttributes["gen_ai.usage.input_tokens"]), OutputTokens=tolong(TraceAttributes["gen_ai.usage.output_tokens"]), FinishReasons=TraceAttributes["gen_ai.response.finish_reasons"]
+    | extend DurationMs=(EndTime - StartTime) / 1ms, Failed=SpanStatus == "STATUS_CODE_ERROR"
+    | project StartTime, EndTime, TraceID, SpanID, ParentID, SpanName, Service, Environment, Version, Operation, Agent, Model, Tool, InputTokens, OutputTokens, FinishReasons, DurationMs, Failed
+}
+
+.create-or-alter function with (folder='Agents', docstring='One row per agent run (trace): agents involved, model and tool calls, tokens, duration, and outcome') AgentRuns(lookback:timespan=1h) {
+    let spans = AgentSpans(lookback);
+    let entry = spans
+        | where Operation == "invoke_agent"
+        | summarize arg_min(StartTime, Agent) by TraceID
+        | project TraceID, EntryAgent=Agent;
+    spans
+    | summarize Start=min(StartTime), End=max(EndTime), Agents=make_set_if(Agent, Operation == "invoke_agent"), Models=make_set_if(Model, Operation == "chat"), Tools=make_set_if(Tool, Operation == "execute_tool"),
+        ModelCalls=countif(Operation == "chat"), ToolCalls=countif(Operation == "execute_tool"), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens),
+        Failed=max(toint(Failed)) == 1, Environment=take_any(Environment), Version=take_any(Version) by TraceID
+    | join kind=leftouter entry on TraceID
+    | extend DurationMs=(End - Start) / 1ms, Handoff=array_length(Agents) > 1
+    | project Start, TraceID, Environment, Version, EntryAgent, Agents, Handoff, Models, Tools, ModelCalls, ToolCalls, InputTokens, OutputTokens, DurationMs, Failed
+    | order by Start desc
+}
+
+.create-or-alter function with (folder='Agents', docstring='Agent runs per minute with failures and approximate p50 and p95 run duration') AgentOverview(lookback:timespan=1h) {
+    AgentRuns(lookback)
+    | summarize Runs=count(), FailedRuns=countif(Failed), Handoffs=countif(Handoff), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens), P50Ms=percentile(DurationMs, 50), P95Ms=percentile(DurationMs, 95) by WindowStart=bin(Start, 1m), Environment
+}
+
+.create-or-alter function with (folder='Agents', docstring='Model calls, token usage, errors, and latency by model') AgentModels(lookback:timespan=1h) {
+    AgentSpans(lookback)
+    | where Operation == "chat"
+    | summarize Calls=count(), Errors=countif(Failed), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens), P95Ms=round(percentile(DurationMs, 95), 1) by Model, Environment
+    | extend TotalTokens=InputTokens + OutputTokens, ErrorRate=round(todouble(Errors) / Calls, 4)
+    | order by TotalTokens desc
+}
+
+.create-or-alter function with (folder='Agents', docstring='Tool calls, errors, and latency by tool and agent') AgentTools(lookback:timespan=1h) {
+    AgentSpans(lookback)
+    | where Operation == "execute_tool"
+    | summarize Calls=count(), Errors=countif(Failed), P95Ms=round(percentile(DurationMs, 95), 1) by Tool, Agent, Environment
+    | extend ErrorRate=round(todouble(Errors) / Calls, 4)
+    | order by Calls desc
+}
+
+.create-or-alter function with (folder='Agents', docstring='Every model call, tool call, and handoff in one agent run, in order, with offsets for a waterfall') AgentRun(traceId:string) {
+    let spans = OTELTraces
+        | where TraceID == traceId and StartTime > ago(7d)
+        | extend Operation=tostring(TraceAttributes["gen_ai.operation.name"]);
+    let runStart = toscalar(spans | summarize min(StartTime));
+    spans
+    | extend Service=tostring(ResourceAttributes["service.name"]), Agent=tostring(TraceAttributes["gen_ai.agent.name"]), Model=tostring(coalesce(TraceAttributes["gen_ai.response.model"], TraceAttributes["gen_ai.request.model"])), Tool=tostring(TraceAttributes["gen_ai.tool.name"])
+    | extend Step=case(Operation == "invoke_agent", strcat("agent ", Agent), Operation == "chat", strcat("model ", Model), Operation == "execute_tool", strcat("tool ", Tool), strcat(Service, " ", SpanName))
+    | extend OffsetMs=(StartTime - runStart) / 1ms, DurationMs=(EndTime - StartTime) / 1ms, InputTokens=tolong(TraceAttributes["gen_ai.usage.input_tokens"]), OutputTokens=tolong(TraceAttributes["gen_ai.usage.output_tokens"])
+    | project StartTime, Step, SpanName, Operation, Service, Agent, Model, Tool, OffsetMs, DurationMs, InputTokens, OutputTokens, Status=SpanStatus, SpanID, ParentID
+    | order by StartTime asc
+}

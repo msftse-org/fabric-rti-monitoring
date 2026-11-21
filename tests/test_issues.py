@@ -187,5 +187,24 @@ class ReleaseSchemaTests(unittest.TestCase):
         self.assertIn("name: FAILURE_MULTIPLIER", template)
 
 
+class AgentSchemaTests(unittest.TestCase):
+    def test_agent_functions_exist_and_read_only_genai_metadata(self):
+        functions = [c for c in bootstrap.split_schema_commands(SCHEMA) if "folder='Agents'" in c.splitlines()[0]]
+        names = {re.search(r"\) (\w+)\(", c.splitlines()[0]).group(1) for c in functions}
+        self.assertEqual(names, {"AgentSpans", "AgentRuns", "AgentOverview", "AgentModels", "AgentTools", "AgentRun"})
+        text = "\n".join(functions)
+        self.assertNotRegex(text, r"input\.messages|output\.messages|tool\.call\.arguments|cost|price")
+        self.assertIn("arg_min(StartTime, Agent)", text)
+
+    def test_collector_admits_genai_span_names_and_metadata_only(self):
+        for path in ("collector/cloud.yaml", "collector/local.yaml", "k8s/otel-demo/files/collector.yaml"):
+            config = (ROOT / path).read_text()
+            with self.subTest(path=path):
+                self.assertIn('not IsMatch(name, "^(invoke_agent|chat|execute_tool) [A-Za-z0-9._-]{1,64}$")', config)
+                self.assertIn('"gen_ai.usage.input_tokens"', config)
+                self.assertNotIn("gen_ai.input.messages", config)
+                self.assertNotIn("gen_ai.tool.call.arguments", config)
+
+
 if __name__ == "__main__":
     unittest.main()

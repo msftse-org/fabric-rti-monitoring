@@ -1,5 +1,5 @@
 {{- $codeChecksum := printf "%s%s" (.Files.Get "files/shop.py") (.Files.Get "files/requirements.txt") | sha256sum }}
-{{- range $role, $downstream := dict "gateway" "checkout" "checkout" "inventory" "inventory" "payment" "payment" "shipping" "shipping" "notifications" "notifications" "" }}
+{{- range $role, $downstream := dict "gateway" "checkout" "checkout" "inventory" "inventory" "payment" "payment" "shipping" "shipping" "notifications" "notifications" "" "assistant" "" }}
 ---
 apiVersion: v1
 kind: Service
@@ -90,6 +90,10 @@ spec:
             {{- if $downstream }}
             - name: DOWNSTREAM_URL
               value: http://{{ $downstream }}:8080
+            {{- end }}
+            {{- if eq $role "gateway" }}
+            - name: ASSISTANT_URL
+              value: http://assistant:8080
             {{- end }}
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://otel-collector:4318

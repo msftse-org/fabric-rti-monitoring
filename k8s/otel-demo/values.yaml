@@ -24,6 +24,16 @@ images:
   python: python:3.13-slim
   pullPolicy: IfNotPresent
 
+collector:
+  # Keep the exporter queue on a managed disk so records accepted by the collector
+  # survive a pod restart or reschedule. Disabled, the queue uses an emptyDir and
+  # survives only container restarts. See docs/aks-demo.md.
+  persistentQueue:
+    enabled: true
+    size: 2Gi
+    # Empty uses the cluster default (managed-csi on AKS).
+    storageClassName: ""
+
 apps:
   # SDK metric export interval. Each export produces one gauge point per scenario and outcome.
   metricExportIntervalMs: 15000
@@ -40,5 +50,7 @@ loadgen:
   requestsPerSecond: 1
   # Share of requests that call checkout and payment; the rest are browse-only.
   checkoutRatio: 0.5
+  # Share of requests that start an AI assistant conversation (GenAI spans; no model is called).
+  assistRatio: 0.1
   # How often a new demo.run_id baggage value starts.
   runIdRotationSeconds: 3600

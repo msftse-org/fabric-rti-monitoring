@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Synthetic shop service instrumented with the OpenTelemetry Python SDK.
 
-One file serves six roles, selected by SERVICE_ROLE: gateway -> checkout ->
-inventory -> payment -> shipping -> notifications. Telemetry follows the demo
+One file serves seven roles, selected by SERVICE_ROLE: gateway -> checkout ->
+inventory -> payment -> shipping -> notifications, and gateway -> assistant, a
+synthetic AI support agent that emits OpenTelemetry GenAI spans without calling
+any model. Telemetry follows the demo
 contract enforced by the collector, including demo.synthetic=true.
 OpenTelemetry is imported only in main() so unit tests need the stdlib only.
 """
@@ -30,8 +32,13 @@ ROLES = {
     "payment": ("demo.payment", "shipping"),
     "shipping": ("demo.shipping", "notifications"),
     "notifications": ("demo.notifications", None),
+    "assistant": ("demo.assistant", None),
 }
-SCENARIOS = ("browse", "checkout")
+SCENARIOS = ("browse", "checkout", "assist")
+# Synthetic GenAI identities. No model is called and no prompt or completion text exists.
+GENAI_PROVIDER = "demo"
+SMALL_MODEL = "demo-chat-small"
+LARGE_MODEL = "demo-chat-large"
 
 
 def local_failure(role, rng):
@@ -126,11 +133,12 @@ class IntervalMean:
 
 
 class Shop:
-    def __init__(self, role, downstream_url, otel, rng=None, failure_multiplier=1.0):
+    def __init__(self, role, downstream_url, otel, rng=None, failure_multiplier=1.0, assistant_url=None):
         from opentelemetry.metrics import Observation
 
         self.role = role
         self.failure_multiplier = failure_multiplier
+        self.assistant_url = assistant_url
         self.span_name, downstream = ROLES[role]
         self.downstream_url = downstream_url if downstream else None
         self.otel = otel
@@ -184,6 +192,8 @@ class Shop:
 
     def _work(self, scenario, details):
         """Do this hop's work; return None on success or the (type, message) of the failure."""
+        if self.role == "assistant":
+            return self._agent_run(details)
         latency, failed = local_work(self.role, scenario, self.rng, self.failure_multiplier)
         failure = local_failure(self.role, self.rng) if failed else None
         if self.role == "payment":
@@ -200,14 +210,19 @@ class Shop:
                            f"charge for order {uuid.UUID(int=self.rng.getrandbits(128))} failed: database unavailable")
         else:
             time.sleep(latency)
-        if failed or not self.downstream_url or scenario != "checkout":
+        if failed or scenario == "browse":
             return failure
-        downstream = ROLES[self.role][1]
+        if scenario == "assist":
+            downstream, url = "assistant", self.assistant_url
+        else:
+            downstream, url = ROLES[self.role][1], self.downstream_url
+        if not url:
+            return failure
         headers = {}
         self.otel["propagate"].inject(headers)
-        request = urllib.request.Request(f"{self.downstream_url}/{scenario}", headers=headers)
+        request = urllib.request.Request(f"{url}/{scenario}", headers=headers)
         try:
-            with urllib.request.urlopen(request, timeout=5) as response:
+            with urllib.request.urlopen(request, timeout=15) as response:
                 if response.status != 200:
                     return downstream_failure(downstream, f"returned HTTP {response.status}")
                 return None
@@ -215,6 +230,66 @@ class Shop:
             return downstream_failure(downstream, f"returned HTTP {error.code}")
         except (urllib.error.URLError, TimeoutError, ConnectionError):
             return downstream_failure(downstream, "could not be reached")
+
+    def _genai_span(self, name, kind, attributes):
+        return self.tracer.start_as_current_span(name, kind=kind, attributes={
+            "gen_ai.provider.name": GENAI_PROVIDER, **attributes})
+
+    def _fail(self, span, failure):
+        span.set_status(self.otel["StatusCode"].ERROR)
+        record_exception(span, failure)
+
+    def _chat(self, model, finish_reason, agent):
+        """One model call: token usage and finish reason, never content. Returns a failure or None."""
+        rng = self.rng
+        with self._genai_span(f"chat {model}", self.otel["SpanKind"].CLIENT, {
+                "gen_ai.operation.name": "chat", "gen_ai.request.model": model,
+                "gen_ai.agent.name": agent}) as span:
+            time.sleep(rng.uniform(0.08, 0.35) * (2 if model == LARGE_MODEL else 1))
+            if rng.random() < 0.02 * self.failure_multiplier:
+                failure = ("RateLimitError",
+                           f"rate limit exceeded for deployment {model}, retry after {rng.randint(2, 30)} s")
+                self._fail(span, failure)
+                return failure
+            span.set_attribute("gen_ai.response.model", model)
+            span.set_attribute("gen_ai.usage.input_tokens", rng.randint(300, 2500))
+            span.set_attribute("gen_ai.usage.output_tokens", rng.randint(20, 400))
+            span.set_attribute("gen_ai.response.finish_reasons", [finish_reason])
+        return None
+
+    def _tool(self, tool, agent):
+        rng = self.rng
+        with self._genai_span(f"execute_tool {tool}", self.otel["SpanKind"].INTERNAL, {
+                "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": tool,
+                "gen_ai.tool.type": "function", "gen_ai.agent.name": agent}) as span:
+            time.sleep(rng.uniform(0.01, 0.08))
+            if rng.random() < 0.05 * self.failure_multiplier:
+                failure = ("ToolExecutionError", f"{tool} failed: order {rng.randint(10000, 99999)} not found")
+                self._fail(span, failure)
+                return failure
+        return None
+
+    def _agent(self, agent, model, tools):
+        """One agent turn: plan with a model call, run tools, answer. Returns a failure or None."""
+        with self._genai_span(f"invoke_agent {agent}", self.otel["SpanKind"].INTERNAL, {
+                "gen_ai.operation.name": "invoke_agent", "gen_ai.agent.name": agent,
+                "gen_ai.request.model": model}) as span:
+            failure = self._chat(model, "tool_calls", agent)
+            for tool in tools:
+                failure = failure or self._tool(tool, agent)
+            if not failure and agent == "support-agent" and self.rng.random() < 0.3:
+                # Hand off refunds to a second agent inside the same run.
+                failure = self._agent("refunds-agent", LARGE_MODEL, ("check_refund_policy", "issue_refund"))
+            failure = failure or self._chat(model, "stop", agent)
+            if failure:
+                self._fail(span, failure)
+            return failure
+
+    def _agent_run(self, details):
+        failure = self._agent("support-agent", SMALL_MODEL, ("lookup_order",))
+        if failure:
+            return ("AgentRunError", f"support-agent run failed: {failure[0]}")
+        return None
 
 
 def make_handler(shop):
@@ -226,7 +301,7 @@ def make_handler(shop):
             if path == "/healthz":
                 return self._reply(200)
             scenario = path.strip("/")
-            allowed = SCENARIOS if shop.role == "gateway" else ("checkout",)
+            allowed = {"gateway": SCENARIOS, "assistant": ("assist",)}.get(shop.role, ("checkout",))
             if scenario not in allowed:
                 return self._reply(404)
             # Propagators look up lower-case keys; urllib sends capitalized names.
@@ -310,6 +385,10 @@ def main():
     if ROLES[role][1] and not downstream_url.startswith(("http://", "https://")):
         print("DOWNSTREAM_URL must be an HTTP(S) URL for this role", file=sys.stderr)
         return 2
+    assistant_url = os.environ.get("ASSISTANT_URL", "").rstrip("/") or None
+    if assistant_url and not assistant_url.startswith(("http://", "https://")):
+        print("ASSISTANT_URL must be an HTTP(S) URL", file=sys.stderr)
+        return 2
     port = os.environ.get("PORT", "8080")
     if not port.isdigit() or not 1024 <= int(port) <= 65535:
         print("PORT must be an unprivileged TCP port", file=sys.stderr)
@@ -320,7 +399,8 @@ def main():
         print(error, file=sys.stderr)
         return 2
     otel = setup_telemetry(role, version)
-    shop = Shop(role, downstream_url, otel, failure_multiplier=failure_multiplier)
+    shop = Shop(role, downstream_url, otel, failure_multiplier=failure_multiplier,
+                assistant_url=assistant_url if role == "gateway" else None)
     server = ThreadingHTTPServer(("0.0.0.0", int(port)), make_handler(shop))
     signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown).start())
     print(f"{role} listening on :{port}", flush=True)

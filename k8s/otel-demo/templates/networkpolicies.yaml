@@ -9,7 +9,7 @@ metadata:
 spec:
   podSelector: {}
   policyTypes: ["Ingress"]
-{{- range $target, $source := dict "gateway" "loadgen" "checkout" "gateway" "inventory" "checkout" "payment" "inventory" "shipping" "payment" "notifications" "shipping" }}
+{{- range $target, $source := dict "gateway" "loadgen" "checkout" "gateway" "inventory" "checkout" "payment" "inventory" "shipping" "payment" "notifications" "shipping" "assistant" "gateway" }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

@@ -21,7 +21,7 @@ processors:
     traces:
       span:
         - 'resource.attributes["demo.synthetic"] != true'
-        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.inventory" and name != "demo.payment" and name != "demo.shipping" and name != "demo.notifications" and name != "demo.postgres.query"'
+        - 'name != "demo.request" and name != "demo.checkout" and name != "demo.inventory" and name != "demo.payment" and name != "demo.shipping" and name != "demo.notifications" and name != "demo.postgres.query" and name != "demo.assistant" and not IsMatch(name, "^(invoke_agent|chat|execute_tool) [A-Za-z0-9._-]{1,64}$")'
       spanevent:
         - 'name != "exception"'
     logs:
@@ -39,7 +39,8 @@ processors:
       - context: span
         statements:
           - keep_keys(resource.attributes, ["service.name", "service.version", "deployment.environment.name", "demo.synthetic"])
-          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id"])
+          # GenAI semantic-convention metadata only: never prompts, completions, or tool arguments.
+          - keep_keys(attributes, ["demo.scenario", "outcome", "demo.run_id", "gen_ai.operation.name", "gen_ai.provider.name", "gen_ai.request.model", "gen_ai.response.model", "gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens", "gen_ai.response.finish_reasons", "gen_ai.agent.name", "gen_ai.tool.name", "gen_ai.tool.type"])
           - set(status.message, "")
       # Exception events are the one span event kept, for issue grouping. Only the
       # type and message survive, and variable values in the message are replaced
