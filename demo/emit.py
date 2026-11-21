@@ -18,6 +18,22 @@ def attribute(key, value):
     return {"key": key, "value": {value_type: value}}
 
 
+def exception_event(time_ns, exception_type, message):
+    """An OpenTelemetry exception span event. Adds no span, log, or metric."""
+    return {"timeUnixNano": str(time_ns), "name": "exception", "attributes": [
+        attribute("exception.type", exception_type), attribute("exception.message", message)]}
+
+
+def failure_for(child_service, index):
+    """The exception each failing hop records; values vary per request like real errors."""
+    if child_service is None:
+        return ("QueryCanceledError",
+                f"canceling statement due to statement timeout on orders.id={40000 + index * 7}")
+    if child_service == "postgres":
+        return ("PaymentProcessingError", f"charge for order {90000 + index} failed: database unavailable")
+    return ("DownstreamServiceError", f"{child_service} returned HTTP 500 for request {index}")
+
+
 def make_payloads(index, now_ns=None, run_id=None):
     """One synthetic request across four service resources, plus a log and metrics."""
     end = now_ns if now_ns is not None else time.time_ns()
@@ -33,12 +49,13 @@ def make_payloads(index, now_ns=None, run_id=None):
     detail_attributes = dimensions + [attribute("demo.run_id", run_id)]
     resource_spans = []
     parent_id = None
-    for depth, (service, span_name) in enumerate((
+    hops = (
         ("gateway", "demo.request"),
         ("checkout", "demo.checkout"),
         ("payment", "demo.payment"),
         ("postgres", "demo.postgres.query"),
-    )):
+    )
+    for depth, (service, span_name) in enumerate(hops):
         resource = {"attributes": [
             attribute("service.name", service),
             attribute("service.version", "1.0.0"),
@@ -52,6 +69,9 @@ def make_payloads(index, now_ns=None, run_id=None):
             "endTimeUnixNano": str(end - depth * 5_000_000),
             "attributes": copy.deepcopy(detail_attributes), "status": {"code": 2 if failed else 1},
         }
+        if failed:
+            child = hops[depth + 1][0] if depth + 1 < len(hops) else None
+            span["events"] = [exception_event(end - depth * 5_000_000, *failure_for(child, index))]
         if parent_id is not None:
             span["parentSpanId"] = parent_id
         resource_spans.append({"resource": resource,

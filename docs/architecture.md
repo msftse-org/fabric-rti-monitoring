@@ -36,8 +36,8 @@ receiver inside the environment.
    Selected requests simulate failures. A run ID identifies the batch in trace/log
    detail and is excluded from metric dimensions.
 2. The collector accepts only the demo signal contract. Resource and record
-   attributes are restricted, log bodies are replaced, span events are dropped,
-   and batches limit export overhead. These are sample controls for synthetic
+   attributes are restricted, log bodies are replaced, span events other than
+   cleaned `exception` events are dropped, and batches limit export overhead. These are sample controls for synthetic
    data, not a general-purpose sensitive-data classifier.
 3. The exporter authenticates with the collector identity and sends the three
    signal types into typed tables. Managed streaming can fall back to queued

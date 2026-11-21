@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 # role -> (server span name, downstream role)
 ROLES = {
     "gateway": ("demo.request", "checkout"),
@@ -30,6 +30,44 @@ ROLES = {
     "notifications": ("demo.notifications", None),
 }
 SCENARIOS = ("browse", "checkout")
+
+
+def local_failure(role, rng):
+    """Return (exception.type, exception.message) for a failure that starts at this hop.
+
+    Messages deliberately carry variable values (IDs, numbers, addresses) the way
+    real errors do, so issue grouping has to normalize them. All values are fake.
+    """
+    if role == "gateway":
+        return ("UpstreamTimeoutError",
+                f"catalog lookup for session {uuid.UUID(int=rng.getrandbits(128))} "
+                f"timed out after {rng.randint(800, 3000)} ms")
+    if role == "checkout":
+        return ("CartValidationError",
+                f"cart {uuid.UUID(int=rng.getrandbits(128))} contains {rng.randint(1, 9)} items with stale prices")
+    if role == "inventory":
+        return ("StockReservationError",
+                f"could not reserve sku-{rng.randint(1000, 9999)} for order "
+                f"{uuid.UUID(int=rng.getrandbits(128))}: insufficient stock")
+    if role == "payment":
+        return ("QueryCanceledError",
+                f"canceling statement due to statement timeout on orders.id={rng.randint(10000, 99999)}")
+    if role == "shipping":
+        return ("CarrierUnavailableError",
+                f"rate service at 10.{rng.randint(0, 255)}.{rng.randint(0, 255)}.{rng.randint(1, 254)} refused the connection")
+    return ("SmtpDeliveryError",
+            f"message to customer-{rng.randint(1000, 9999)}@example.com deferred: mailbox busy")
+
+
+def downstream_failure(downstream, detail):
+    """Return the exception a hop records when the service it called failed."""
+    return ("DownstreamServiceError", f"{downstream} {detail}")
+
+
+def record_exception(span, failure):
+    """Add one OpenTelemetry exception event. No stack trace: the collector would drop it."""
+    exception_type, message = failure
+    span.add_event("exception", {"exception.type": exception_type, "exception.message": message})
 
 
 def parse_run_id(value):
@@ -120,7 +158,10 @@ class Shop:
         try:
             with self.tracer.start_as_current_span(
                     self.span_name, kind=otel["SpanKind"].SERVER, attributes=details) as span:
-                failed = self._work(scenario, details)
+                failure = self._work(scenario, details)
+                failed = failure is not None
+                if failed:
+                    record_exception(span, failure)
                 outcome = "error" if failed else "success"
                 span.set_attribute("outcome", outcome)
                 span.set_status(otel["StatusCode"].ERROR if failed else otel["StatusCode"].OK)
@@ -136,7 +177,9 @@ class Shop:
         return 500 if failed else 200
 
     def _work(self, scenario, details):
+        """Do this hop's work; return None on success or the (type, message) of the failure."""
         latency, failed = local_work(self.role, scenario, self.rng)
+        failure = local_failure(self.role, self.rng) if failed else None
         if self.role == "payment":
             with self.tracer.start_as_current_span(
                     "demo.postgres.query", kind=self.otel["SpanKind"].CLIENT, attributes=details) as query:
@@ -144,18 +187,28 @@ class Shop:
                 query.set_attribute("outcome", "error" if failed else "success")
                 if failed:
                     query.set_status(self.otel["StatusCode"].ERROR)
+                    record_exception(query, failure)
+            if failed:
+                # The query failed, so the payment span reports why the charge did.
+                failure = ("PaymentProcessingError",
+                           f"charge for order {uuid.UUID(int=self.rng.getrandbits(128))} failed: database unavailable")
         else:
             time.sleep(latency)
         if failed or not self.downstream_url or scenario != "checkout":
-            return failed
+            return failure
+        downstream = ROLES[self.role][1]
         headers = {}
         self.otel["propagate"].inject(headers)
         request = urllib.request.Request(f"{self.downstream_url}/{scenario}", headers=headers)
         try:
             with urllib.request.urlopen(request, timeout=5) as response:
-                return response.status != 200
+                if response.status != 200:
+                    return downstream_failure(downstream, f"returned HTTP {response.status}")
+                return None
+        except urllib.error.HTTPError as error:
+            return downstream_failure(downstream, f"returned HTTP {error.code}")
         except (urllib.error.URLError, TimeoutError, ConnectionError):
-            return True
+            return downstream_failure(downstream, "could not be reached")
 
 
 def make_handler(shop):

@@ -72,6 +72,23 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(root["status"]["code"], 2)
         self.assertEqual(log["severityNumber"], 17)
 
+    def test_failing_spans_carry_one_exception_event_and_successful_spans_none(self):
+        def events(index):
+            payloads = emit.make_payloads(index)
+            return [s.get("events") for r in payloads["traces"]["resourceSpans"]
+                    for s in r["scopeSpans"][0]["spans"]]
+
+        self.assertEqual(events(0), [None] * 4)
+        failing = events(4)
+        self.assertTrue(all(len(e) == 1 and e[0]["name"] == "exception" for e in failing))
+        types = [{a["key"]: a["value"]["stringValue"] for a in e[0]["attributes"]}["exception.type"] for e in failing]
+        self.assertEqual(types, ["DownstreamServiceError", "DownstreamServiceError",
+                                 "PaymentProcessingError", "QueryCanceledError"])
+        # Messages differ per request, so grouping must normalize them; counts are unchanged.
+        self.assertNotEqual(events(4)[3][0]["attributes"], events(9)[3][0]["attributes"])
+        self.assertEqual(sum(len(r["scopeSpans"][0]["spans"])
+                             for r in emit.make_payloads(4)["traces"]["resourceSpans"]), 4)
+
     def test_metrics_use_scalar_gauge_and_delta_sum_without_trace_id_dimensions(self):
         payload = emit.make_payloads(0)["metrics"]
         metrics = payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]

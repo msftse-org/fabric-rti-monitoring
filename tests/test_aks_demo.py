@@ -1,6 +1,7 @@
 """Offline tests for the AKS OpenTelemetry demo chart, apps, and contracts."""
 
 import importlib.util
+import random
 from pathlib import Path
 import re
 import threading
@@ -38,7 +39,7 @@ class ShopTests(unittest.TestCase):
         payment = shop.Shop.__new__(shop.Shop)
         payment.role = "payment"
         payment.downstream_url = "http://shipping:8080"
-        payment.rng = None
+        payment.rng = random.Random(7)
         payment.tracer = MagicMock()
         propagate = MagicMock()
         propagate.inject.side_effect = lambda headers: headers.update({"traceparent": "test-parent"})
@@ -50,7 +51,7 @@ class ShopTests(unittest.TestCase):
         with patch.object(shop, "local_work", return_value=(0, False)), \
                 patch.object(shop.urllib.request, "urlopen") as send:
             send.return_value.__enter__.return_value.status = 200
-            self.assertFalse(payment._work("checkout", {}))
+            self.assertIsNone(payment._work("checkout", {}))
             request = send.call_args.args[0]
             self.assertEqual(request.full_url, "http://shipping:8080/checkout")
             self.assertEqual(request.get_header("Traceparent"), "test-parent")
@@ -60,11 +61,54 @@ class ShopTests(unittest.TestCase):
         payment = self.payment()
         with patch.object(shop, "local_work", return_value=(0, True)), \
                 patch.object(shop.urllib.request, "urlopen") as send:
-            self.assertTrue(payment._work("checkout", {}))
+            failure = payment._work("checkout", {})
+            self.assertEqual(failure[0], "PaymentProcessingError")
             send.assert_not_called()
+        query = payment.tracer.start_as_current_span.return_value.__enter__.return_value
+        query.add_event.assert_called_once()
+        name, attributes = query.add_event.call_args.args
+        self.assertEqual(name, "exception")
+        self.assertEqual(attributes["exception.type"], "QueryCanceledError")
+        self.assertEqual(set(attributes), {"exception.type", "exception.message"})
         with patch.object(shop, "local_work", return_value=(0, False)), \
                 patch.object(shop.urllib.request, "urlopen", side_effect=ConnectionError):
-            self.assertTrue(payment._work("checkout", {}))
+            self.assertEqual(payment._work("checkout", {}),
+                             ("DownstreamServiceError", "shipping could not be reached"))
+        error = urllib.error.HTTPError("http://shipping:8080/checkout", 500, "failed", {}, None)
+        with patch.object(shop, "local_work", return_value=(0, False)), \
+                patch.object(shop.urllib.request, "urlopen", side_effect=error):
+            self.assertEqual(payment._work("checkout", {}),
+                             ("DownstreamServiceError", "shipping returned HTTP 500"))
+
+    def test_every_role_fails_with_a_typed_message_carrying_variable_values(self):
+        rng = random.Random(3)
+        for role in shop.ROLES:
+            with self.subTest(role=role):
+                exception_type, message = shop.local_failure(role, rng)
+                self.assertRegex(exception_type, r"^[A-Z][A-Za-z]+Error$")
+                self.assertRegex(message, r"[0-9]")
+                self.assertLessEqual(len(message), 256)
+        self.assertNotEqual(shop.local_failure("gateway", rng), shop.local_failure("gateway", rng))
+
+    def test_handle_records_one_exception_event_only_on_failure(self):
+        for failure in (None, ("CartValidationError", "cart 1 has 2 items with stale prices")):
+            with self.subTest(failure=failure):
+                checkout = shop.Shop.__new__(shop.Shop)
+                checkout.role, checkout.span_name = "checkout", "demo.checkout"
+                checkout.tracer, checkout.log = MagicMock(), MagicMock()
+                checkout.requests, checkout.durations = MagicMock(), shop.IntervalMean()
+                checkout.otel = {name: MagicMock() for name in (
+                    "propagate", "baggage", "context", "SpanKind", "StatusCode", "SeverityNumber")}
+                checkout.otel["baggage"].get_baggage.return_value = None
+                span = checkout.tracer.start_as_current_span.return_value.__enter__.return_value
+                with patch.object(checkout, "_work", return_value=failure):
+                    status = checkout.handle("checkout", {})
+                self.assertEqual(status, 500 if failure else 200)
+                if failure:
+                    span.add_event.assert_called_once_with("exception", {
+                        "exception.type": failure[0], "exception.message": failure[1]})
+                else:
+                    span.add_event.assert_not_called()
 
     def test_run_id_is_canonical_uuid_or_ignored(self):
         self.assertEqual(shop.parse_run_id("8E6299B9-0B6A-44B7-BE90-2CBB9B002F0F"),
@@ -175,6 +219,24 @@ class ContractTests(unittest.TestCase):
         self.assertIn("use_azure_auth: true", aks)
         self.assertNotIn("managed_identity_id", aks)
         self.assertEqual(aks.count("processors: [memory_limiter, filter/synthetic, resource/k8s, transform/demo, batch]"), 3)
+
+    def test_every_collector_keeps_only_sanitized_exception_events(self):
+        def spanevent_rules(path):
+            config = (ROOT / path).read_text()
+            block = re.search(r"^      - context: spanevent\n        statements:\n((?:          - .*\n)+)", config, re.M)
+            self.assertIsNotNone(block, path)
+            self.assertIn("      spanevent:\n        - 'name != \"exception\"'\n", config, path)
+            return block.group(1)
+
+        rules = {path: spanevent_rules(path) for path in (
+            "collector/cloud.yaml", "collector/local.yaml", "k8s/otel-demo/files/collector.yaml")}
+        self.assertEqual(len(set(rules.values())), 1, "exception event rules differ between collectors")
+        statements = next(iter(rules.values()))
+        self.assertIn('keep_keys(attributes, ["exception.type", "exception.message"])', statements)
+        self.assertNotIn("exception.stacktrace", statements)
+        for placeholder in ("<uuid>", "<email>", "<ip>", "<hex>", "<n>"):
+            self.assertIn(f'"{placeholder}")', statements)
+        self.assertIn("truncate_all(attributes, 256)", statements)
 
     def test_chart_identity_matches_terraform_federated_credential_subject(self):
         module = (ROOT / "infra/terraform/modules/aks/main.tf").read_text()
