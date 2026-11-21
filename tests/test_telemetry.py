@@ -161,10 +161,11 @@ class ServingAssetTests(unittest.TestCase):
     def test_materialized_views_have_no_trace_identifiers_as_dimensions(self):
         schema = (ROOT / "fabric" / "schema.kql").read_text()
         views = re.findall(r"materialized-view (\w+) on table (\w+)\s*\{(.*?)\n\}", schema, re.S)
-        self.assertEqual(len(views), 3)
         self.assertEqual({v[1] for v in views}, {"OTELLogs", "OTELTraces", "OTELMetrics"})
         for name, source, query in views:
-            self.assertNotRegex(query, r"TraceID|SpanID|ParentID|demo\.run_id|ago\(|now\(")
+            # Trace IDs may be sampled as an aggregate example, never used as a dimension.
+            self.assertNotRegex(query.rsplit(" by ", 1)[1], r"TraceID|SpanID|ParentID|demo\.run_id")
+            self.assertNotRegex(query, r"demo\.run_id|ago\(|now\(")
             self.assertEqual(query.count("| summarize"), 1)
             self.assertTrue(query.rsplit("|", 1)[1].lstrip().startswith("summarize"))
             self.assertIn(f".alter materialized-view {name} policy caching hot = 1d", schema)

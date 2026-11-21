@@ -307,3 +307,30 @@ test('the Activator export has one rule per threshold and action, and every refe
   assert.ok(rules.every((rule) => rule.payload.definition!.settings!.shouldRun === false));
   assert.match(pageOnly.followUps[0], /Page Checkout/);
 });
+
+test('issue alerts become one Activator source and an every-event rule per action', async () => {
+  const { issueAlertsDefinition, ISSUE_ALERTS_KQL } = await import('../src/index.ts');
+  const target = { workspaceId: '11111111-1111-1111-1111-111111111111', databaseItemId: '22222222-2222-2222-2222-222222222222' };
+  const now = Date.parse('2026-11-21T10:07:00Z');
+  const exported = issueAlertsDefinition(target, { teams: ['oncall@contoso.com'], email: ['sre@contoso.com'] }, { start: true, now, placeholderRecipient: 'me@example.com' });
+  assert.match(ISSUE_ALERTS_KQL, /^declare query_parameters\(startTime:datetime, endTime:datetime\); IssueAlerts\(now\(\) - startTime\)/);
+  const entities = exported.entities as { type: string; payload: Record<string, unknown> }[];
+  const source = entities.find((entity) => entity.type === 'kqlSource-v1')!;
+  assert.deepEqual((source.payload.eventhouseItem as Record<string, string>).itemId, target.databaseItemId);
+  const rules = entities.filter((entity) => (entity.payload.definition as { type?: string })?.type === 'Rule');
+  assert.equal(rules.length, 2);
+  for (const rule of rules) {
+    const definition = rule.payload.definition as { instance: string; settings: { shouldRun: boolean } };
+    const steps = JSON.parse(definition.instance).steps;
+    assert.deepEqual(steps[1].rows, [{ name: 'OnEveryValue', kind: 'OnEveryValue', arguments: [] }]);
+    assert.equal(steps[2].rows.length, 1);
+    assert.equal(definition.settings.shouldRun, true);
+  }
+  assert.deepEqual(exported.rules.map((rule) => rule.action), ['Teams', 'Email']);
+  // Deterministic: exporting twice gives the same definition.
+  assert.equal(issueAlertsDefinition(target, { teams: ['oncall@contoso.com'], email: ['sre@contoso.com'] }, { start: true, now, placeholderRecipient: 'me@example.com' }).createBody.definition.parts[0].payload, exported.createBody.definition.parts[0].payload);
+  // With no recipients the rule gets a placeholder and is imported stopped.
+  const placeholder = issueAlertsDefinition(target, { teams: [], email: [] }, { start: true, now, placeholderRecipient: 'me@example.com' });
+  assert.equal(placeholder.rules[0].placeholder, true);
+  assert.match(placeholder.followUps[0], /placeholder/);
+});

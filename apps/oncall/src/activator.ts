@@ -294,3 +294,146 @@ export function reflexDefinition(monitor: Monitor, target: FabricTarget, teamNam
 export function createCommand(workspaceId: string, file: string): string {
   return `az rest --method post --resource https://api.fabric.microsoft.com --url https://api.fabric.microsoft.com/v1/workspaces/${workspaceId}/items --headers Content-Type=application/json --body @${file}`;
 }
+
+export interface IssueAlertActions {
+  /** Teams recipients (users or channels' email addresses). */
+  teams: string[];
+  email: string[];
+}
+
+/**
+ * The KQL an issue-alert source runs every five minutes. `IssueAlerts()` decides each trigger
+ * once, on the transition (first seen, first event after resolution, mute expiry), so every row
+ * is a new alert and the rule fires on every row.
+ */
+export const ISSUE_ALERTS_KQL = [
+  'declare query_parameters(startTime:datetime, endTime:datetime);',
+  'IssueAlerts(now() - startTime)',
+  '| extend Timestamp = endTime',
+  '| project Timestamp, AlertType, Fingerprint, Title, Service, Environment, Events, ExampleTraceID',
+].join(' ');
+
+/**
+ * An Activator item that notifies on `new_issue`, `regression`, and `unmute` issue alerts, the
+ * triggers an error tracker raises instead of thresholds. One rule per action; each fires on every
+ * alert row (`OnEveryValue`). Imported stopped unless `options.start` is set.
+ */
+export function issueAlertsDefinition(target: FabricTarget, actions: IssueAlertActions, options: ExportOptions): ReflexExport {
+  const key = 'rti-oncall:issue-alerts';
+  const ids = { container: guid(`${key}:container`), source: guid(`${key}:source`), event: guid(`${key}:event`) };
+  const windowStart = Math.floor(options.now / (BUCKET_MINUTES * 60_000)) * BUCKET_MINUTES * 60_000;
+  const name = 'Issue alerts';
+  const entities: unknown[] = [
+    { uniqueIdentifier: ids.container, payload: { name, type: 'kqlQueries' }, type: 'container-v1' },
+    {
+      uniqueIdentifier: ids.source,
+      payload: {
+        name: `${name} query`,
+        runSettings: { executionIntervalInSeconds: POLL_SECONDS },
+        query: { queryString: ISSUE_ALERTS_KQL },
+        eventhouseItem: { itemId: target.databaseItemId, workspaceId: target.workspaceId, itemType: 'KustoDatabase' },
+        queryParameters: [
+          { name: 'startTime', type: 'DURATION_START', value: new Date(windowStart - BUCKET_MINUTES * 60_000).toISOString() },
+          { name: 'endTime', type: 'DURATION_END', value: new Date(windowStart).toISOString() },
+        ],
+        eventTimeSettings: { timeFieldName: 'Timestamp', ingestionDelayInSeconds: 120, timeZone: 'UTC' },
+        metadata: { workspaceId: target.workspaceId, measureName: '', querySetId: '', queryId: '' },
+        parentContainer: { targetUniqueIdentifier: ids.container },
+      },
+      type: 'kqlSource-v1',
+    },
+    view(ids.event, `${name} events`, ids.container, {
+      type: 'Event',
+      instance: JSON.stringify({
+        templateId: 'SourceEvent',
+        templateVersion: TEMPLATE_VERSION,
+        steps: [{ name: 'SourceEventStep', id: guid(`${key}:event:step`), rows: [{ name: 'SourceSelector', kind: 'SourceReference', arguments: [arg('entityId', 'string', ids.source)] }] }],
+      }),
+    }),
+  ];
+
+  const headline = 'Issue alert: new issue, regression, or unmute';
+  const body = 'An error issue was first seen, came back after it was resolved, or kept occurring after its mute expired. Open the Issues dashboard and search for the fingerprint in this event.';
+  const fields = ['AlertType', 'Title', 'Service', 'Environment', 'Fingerprint', 'ExampleTraceID'];
+  const bindings: { action: ExportedRule['action']; placeholder: boolean; row: unknown }[] = [];
+  const recipients = actions.teams.length ? actions.teams : actions.email.length ? [] : [options.placeholderRecipient];
+  if (recipients.length) {
+    bindings.push({
+      action: 'Teams',
+      placeholder: !actions.teams.length,
+      row: {
+        name: 'TeamsBinding',
+        kind: 'TeamsMessage',
+        arguments: [arg('messageLocale', 'string', ''), strings('recipients', recipients), strings('headline', [headline]), strings('optionalMessage', [body]), strings('additionalInformation', fields)],
+      },
+    });
+  }
+  if (actions.email.length) {
+    bindings.push({
+      action: 'Email',
+      placeholder: false,
+      row: {
+        name: 'EmailBinding',
+        kind: 'EmailMessage',
+        arguments: [
+          arg('messageLocale', 'string', 'en-us'),
+          strings('sentTo', actions.email),
+          { name: 'copyTo', type: 'array', values: [] },
+          { name: 'bCCTo', type: 'array', values: [] },
+          strings('subject', [headline]),
+          strings('headline', [headline]),
+          strings('optionalMessage', [body]),
+          strings('additionalInformation', fields),
+        ],
+      },
+    });
+  }
+
+  const rules: ExportedRule[] = bindings.map((binding) => {
+    const ruleName = `${name} - ${binding.action}`;
+    const ruleKey = `${key}:rule:${binding.action}`;
+    entities.push(
+      view(
+        guid(ruleKey),
+        ruleName,
+        ids.container,
+        {
+          type: 'Rule',
+          instance: JSON.stringify({
+            templateId: 'EventTrigger',
+            templateVersion: TEMPLATE_VERSION,
+            steps: [
+              { name: 'FieldsDefaultsStep', id: guid(`${ruleKey}:fields`), rows: [{ name: 'EventSelector', kind: 'Event', arguments: [{ name: 'event', kind: 'EventReference', type: 'complex', arguments: [arg('entityId', 'string', ids.event)] }] }] },
+              { name: 'EventDetectStep', id: guid(`${ruleKey}:detect`), rows: [{ name: 'OnEveryValue', kind: 'OnEveryValue', arguments: [] }] },
+              { name: 'ActStep', id: guid(`${ruleKey}:act`), rows: [binding.row] },
+            ],
+          }),
+          settings: { shouldRun: options.start && !binding.placeholder, shouldApplyRuleOnUpdate: false },
+        },
+        { description: 'Created by: rti-oncall issue alerts' },
+      ),
+    );
+    return { name: ruleName, level: 'alert', action: binding.action, placeholder: binding.placeholder, condition: 'On every new_issue, regression, or unmute row from IssueAlerts()' };
+  });
+
+  const followUps: string[] = [];
+  if (bindings.some((binding) => binding.placeholder)) followUps.push(`Replace the placeholder Teams recipient (${options.placeholderRecipient}) with real people, then start the rule.`);
+  else if (!options.start) followUps.push('Start the rules in Activator once the recipients are right.');
+  const json = JSON.stringify(entities, null, 2);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  const displayName = 'rti-oncall Issue alerts';
+  const description = 'Activator rules for new issues, regressions, and unmutes, generated by the RTI On-Call app.';
+  return {
+    displayName,
+    description,
+    query: ISSUE_ALERTS_KQL,
+    entities,
+    rules,
+    createBody: { displayName, description, type: 'Reflex', definition: { parts: [{ path: 'ReflexEntities.json', payload: btoa(binary), payloadType: 'InlineBase64' }] } },
+    followUps,
+  };
+}

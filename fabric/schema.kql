@@ -85,3 +85,172 @@
     | where WindowStart > ago(lookback) and MetricName == 'demo.request.duration' and MetricType == 'Gauge'
     | project WindowStart, Service, Environment, SampleCount, AverageMs=ValueSum/SampleCount, MinimumMs=ValueMin, MaximumMs=ValueMax
 }
+
+// ---------------------------------------------------------------------------
+// Issues: group failed spans into a small number of issues by fingerprint.
+// The collector keeps only cleaned `exception` span events (type and message).
+// The fingerprint is service + span name + exception type + normalized message,
+// so the same failure with different IDs, numbers, or addresses lands in one
+// issue, and an issue keeps its identity across environments and versions.
+// ---------------------------------------------------------------------------
+
+.create-or-alter function with (folder='Issues', docstring='Replaces variable values in an error message with placeholders so equal failures group together') NormalizeErrorMessage(message:string) {
+    let uuids = replace_regex(message, @'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', '<uuid>');
+    let emails = replace_regex(uuids, @'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}', '<email>');
+    let addresses = replace_regex(emails, @'[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}', '<ip>');
+    let hex = replace_regex(addresses, @'(0x)?[0-9a-fA-F]{16,}', '<hex>');
+    let numbers = replace_regex(hex, @'[0-9]+', '<n>');
+    substring(trim(@'\s+', replace_regex(numbers, @'\s+', ' ')), 0, 256)
+}
+
+.create-or-alter function with (folder='Issues', docstring='One row per failed synthetic span with its exception and issue fingerprint') ErrorEvents(lookback:timespan=1h) {
+    OTELTraces
+    | where StartTime > ago(lookback)
+    | where ResourceAttributes["demo.synthetic"] == true and SpanStatus == "STATUS_CODE_ERROR"
+    | mv-apply Event=Events to typeof(dynamic) on (
+        summarize ExceptionType=take_anyif(tostring(Event.EventAttributes["exception.type"]), tostring(Event.EventName) == "exception"),
+            RawMessage=take_anyif(tostring(Event.EventAttributes["exception.message"]), tostring(Event.EventName) == "exception")
+    )
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"]), Version=tostring(ResourceAttributes["service.version"])
+    | extend ExceptionType=iff(isempty(ExceptionType), "SpanError", ExceptionType)
+    | extend Message=iff(isempty(RawMessage), strcat(SpanName, " failed"), NormalizeErrorMessage(RawMessage))
+    | extend Fingerprint=substring(hash_sha256(strcat(Service, "|", SpanName, "|", ExceptionType, "|", Message)), 0, 16)
+    | project Timestamp=StartTime, Fingerprint, Service, Environment, Version, SpanName, ExceptionType, Message, TraceID, SpanID, RunID=tostring(TraceAttributes["demo.run_id"])
+}
+
+// Hourly issue counts. The fingerprint is a bounded dimension (one per distinct
+// failure, not per request); trace and span IDs are only sampled as an example.
+.create-or-alter materialized-view Issues1h on table OTELTraces {
+    OTELTraces
+    | where ResourceAttributes["demo.synthetic"] == true and SpanStatus == "STATUS_CODE_ERROR"
+    | mv-apply Event=Events to typeof(dynamic) on (
+        summarize ExceptionType=take_anyif(tostring(Event.EventAttributes["exception.type"]), tostring(Event.EventName) == "exception"),
+            RawMessage=take_anyif(tostring(Event.EventAttributes["exception.message"]), tostring(Event.EventName) == "exception")
+    )
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"]), Version=tostring(ResourceAttributes["service.version"])
+    | extend ExceptionType=iff(isempty(ExceptionType), "SpanError", ExceptionType)
+    | extend Message=iff(isempty(RawMessage), strcat(SpanName, " failed"), NormalizeErrorMessage(RawMessage))
+    | extend Fingerprint=substring(hash_sha256(strcat(Service, "|", SpanName, "|", ExceptionType, "|", Message)), 0, 16)
+    | summarize EventCount=count(), FirstSeen=min(StartTime), LastSeen=max(StartTime), ExampleTraceID=take_any(TraceID) by WindowStart=bin(StartTime, 1h), Fingerprint, Service, Environment, Version, SpanName, ExceptionType, Message
+}
+
+.alter materialized-view Issues1h policy caching hot = 1d
+
+// Append-only triage state: the newest row per fingerprint wins. Written by
+// scripts/issue-state.py through Kusto management as the signed-in user.
+.create-merge table IssueState (Fingerprint:string, Status:string, ResolvedInVersion:string, MutedUntil:datetime, ChangedBy:string, ChangedAt:datetime, Note:string)
+
+.alter-merge table IssueState policy retention softdelete = 365d
+
+.create-or-alter function with (folder='Issues', docstring='Current triage state per issue fingerprint: open, resolved, or muted') IssueStatus() {
+    IssueState
+    | summarize arg_max(ChangedAt, *) by Fingerprint
+    | extend Muted=Status == "muted" and (isnull(MutedUntil) or MutedUntil > now())
+    | extend EffectiveStatus=case(Status == "muted" and not(Muted), "open", Status)
+}
+
+.create-or-alter function with (folder='Issues', docstring='Issues seen in the lookback window with first/last seen, counts, versions, status, and a 24-hour hourly trend') Issues(lookback:timespan=24h) {
+    let recent = Issues1h
+        | where WindowStart > ago(lookback + 1h) and LastSeen > ago(lookback);
+    let firstSeen = Issues1h
+        | summarize arg_min(FirstSeen, Version) by Fingerprint
+        | project Fingerprint, EverFirstSeen=FirstSeen, IntroducedIn=Version;
+    let trend = Issues1h
+        | where WindowStart > ago(24h)
+        | make-series Trend=sum(EventCount) default=0 on WindowStart from bin(ago(23h), 1h) to now() step 1h by Fingerprint, Environment
+        | project Fingerprint, Environment, Trend;
+    recent
+    | summarize Events=sum(EventCount), FirstSeenInWindow=min(FirstSeen), LastSeen=max(LastSeen), Versions=make_set(Version), ExampleTraceID=take_any(ExampleTraceID) by Fingerprint, Service, Environment, SpanName, ExceptionType, Message
+    | join kind=leftouter firstSeen on Fingerprint
+    | join kind=leftouter trend on Fingerprint, Environment
+    | join kind=leftouter (IssueStatus() | project Fingerprint, EffectiveStatus, ResolvedInVersion, MutedUntil, ChangedBy, ChangedAt) on Fingerprint
+    | extend Status=coalesce(EffectiveStatus, "open"), Title=strcat(ExceptionType, ": ", Message), Culprit=strcat(Service, " / ", SpanName)
+    | project Fingerprint, Title, Culprit, Service, Environment, SpanName, ExceptionType, Message, Status, Events, FirstSeen=EverFirstSeen, LastSeen, IntroducedIn, Versions, ExampleTraceID, Trend, ResolvedInVersion, MutedUntil, StatusChangedBy=ChangedBy, StatusChangedAt=ChangedAt
+    | order by LastSeen desc
+}
+
+// Alert triggers in the style of an error tracker, evaluated over a short window
+// for Activator or the RTI On-Call app. Each fires once per transition:
+//   new_issue   the fingerprint was first seen inside the window
+//   regression  the first event after the issue was resolved fell inside the
+//               window (when it was resolved in a version, only events from that
+//               version or later count). Searches the 7-day raw retention.
+//   unmute      a mute expired inside the window and the issue occurred after it
+// Muted issues raise nothing until the mute expires.
+.create-or-alter function with (folder='Issues', docstring='new_issue, regression, and unmute alerts for issues active in the lookback window') IssueAlerts(lookback:timespan=15m) {
+    let state = IssueStatus()
+        | project Fingerprint, Status, ResolvedInVersion, MutedUntil, Muted, ChangedAt;
+    let regressions = ErrorEvents(7d)
+        | join kind=inner (state | where Status == "resolved") on Fingerprint
+        | where Timestamp > ChangedAt
+        | where isempty(ResolvedInVersion) or isnull(parse_version(Version)) or parse_version(Version) >= parse_version(ResolvedInVersion)
+        | summarize RegressedAt=min(Timestamp) by Fingerprint;
+    let everFirst = Issues1h
+        | summarize EverFirstSeen=min(FirstSeen) by Fingerprint;
+    ErrorEvents(lookback)
+    | join kind=leftouter state on Fingerprint
+    | extend Status=coalesce(Status, "open"), Muted=coalesce(Muted, false)
+    | summarize Events=count(), FirstEvent=min(Timestamp), LastEvent=max(Timestamp), EventsAfterMute=countif(Status == "muted" and Timestamp > MutedUntil), Versions=make_set(Version), ExampleTraceID=take_any(TraceID), Muted=take_any(Muted), MutedUntil=take_any(MutedUntil), Status=take_any(Status)
+        by Fingerprint, Service, Environment, SpanName, ExceptionType, Message
+    | join kind=leftouter everFirst on Fingerprint
+    | join kind=leftouter regressions on Fingerprint
+    | extend EverFirstSeen=coalesce(EverFirstSeen, FirstEvent)
+    | extend AlertType=case(
+        Muted, "",
+        Status == "resolved" and RegressedAt > ago(lookback), "regression",
+        Status == "muted" and MutedUntil > ago(lookback) and EventsAfterMute > 0, "unmute",
+        Status == "open" and EverFirstSeen > ago(lookback), "new_issue",
+        "")
+    | where isnotempty(AlertType)
+    | project AlertType, Fingerprint, Title=strcat(ExceptionType, ": ", Message), Service, Environment, SpanName, Events, FirstEvent, LastEvent, Versions, ExampleTraceID
+    | order by LastEvent desc
+}
+
+// ---------------------------------------------------------------------------
+// Release health: is this deploy worse than the last one? One-minute server-span
+// counts per service, environment, and service.version (a bounded dimension).
+// Tiers (parameters): healthy >= 99% error-free, degraded >= 95%, unhealthy below,
+// and "too few requests" under 50 requests, where a rate is noise.
+// ---------------------------------------------------------------------------
+
+.create-or-alter materialized-view Releases1m on table OTELTraces {
+    OTELTraces
+    | where ResourceAttributes["demo.synthetic"] == true and SpanKind == "SPAN_KIND_SERVER"
+    | extend Service=tostring(ResourceAttributes["service.name"]), Environment=tostring(ResourceAttributes["deployment.environment.name"]), Version=tostring(ResourceAttributes["service.version"]), DurationMs=(EndTime-StartTime)/1ms
+    | summarize RequestCount=count(), ErrorCount=countif(SpanStatus == "STATUS_CODE_ERROR"), DurationDigest=tdigest(DurationMs), FirstSeen=min(StartTime), LastSeen=max(StartTime) by WindowStart=bin(StartTime, 1m), Service, Environment, Version
+}
+
+.alter materialized-view Releases1m policy caching hot = 1d
+
+.create-or-alter function with (folder='Releases', docstring='Requests, error-free rate, p95, new issues, and a health tier per service release') ReleaseHealth(lookback:timespan=24h, healthy:real=0.99, degraded:real=0.95, minRequests:long=50) {
+    let introduced = Issues1h
+        | summarize arg_min(FirstSeen, Version) by Fingerprint, Service, Environment
+        | summarize NewIssues=count() by Service, Environment, Version;
+    Releases1m
+    | where WindowStart > ago(lookback)
+    | summarize Requests=sum(RequestCount), Errors=sum(ErrorCount), Digest=tdigest_merge(DurationDigest), FirstSeen=min(FirstSeen), LastSeen=max(LastSeen) by Service, Environment, Version
+    | extend ErrorFreeRate=round(1.0 - todouble(Errors) / Requests, 4), P95Ms=round(todouble(percentiles_array_tdigest(Digest, dynamic([95]))[0]), 1)
+    | join kind=leftouter introduced on Service, Environment, Version
+    | extend NewIssues=coalesce(NewIssues, 0)
+    | extend Tier=case(Requests < minRequests, "too few requests", ErrorFreeRate >= healthy, "healthy", ErrorFreeRate >= degraded, "degraded", "unhealthy")
+    | project Service, Environment, Version, Tier, ErrorFreeRate, Requests, Errors, P95Ms, NewIssues, FirstSeen, LastSeen
+    | order by Service asc, Environment asc, LastSeen desc
+}
+
+.create-or-alter function with (folder='Releases', docstring='The newest release of each service compared with the release before it') ReleaseComparison(lookback:timespan=7d) {
+    ReleaseHealth(lookback)
+    | partition hint.strategy=native by Service (
+        partition hint.strategy=native by Environment (
+            order by LastSeen desc
+            | take 2
+            | extend Rank=row_number()
+        )
+    )
+    | summarize Current=take_anyif(Version, Rank == 1), Previous=take_anyif(Version, Rank == 2),
+        CurrentErrorFreeRate=take_anyif(ErrorFreeRate, Rank == 1), PreviousErrorFreeRate=take_anyif(ErrorFreeRate, Rank == 2),
+        CurrentP95Ms=take_anyif(P95Ms, Rank == 1), PreviousP95Ms=take_anyif(P95Ms, Rank == 2),
+        CurrentTier=take_anyif(Tier, Rank == 1), NewIssues=take_anyif(NewIssues, Rank == 1)
+        by Service, Environment
+    | extend ErrorFreeDelta=round(CurrentErrorFreeRate - PreviousErrorFreeRate, 4), P95DeltaMs=round(CurrentP95Ms - PreviousP95Ms, 1)
+    | extend Verdict=case(isempty(Previous), "first release", CurrentTier == "too few requests", "too few requests", ErrorFreeDelta <= -0.01, "worse", ErrorFreeDelta >= 0.01, "better", "same")
+}
