@@ -9,6 +9,7 @@ OpenTelemetry is imported only in main() so unit tests need the stdlib only.
 
 import os
 import random
+import re
 import signal
 import sys
 import threading
@@ -20,6 +21,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 VERSION = "1.2.0"
+VERSION_PATTERN = re.compile(r"^[0-9A-Za-z][0-9A-Za-z.+_-]{0,63}$")
 # role -> (server span name, downstream role)
 ROLES = {
     "gateway": ("demo.request", "checkout"),
@@ -80,17 +82,20 @@ def parse_run_id(value):
         return None
 
 
-def local_work(role, scenario, rng):
-    """Return (seconds of simulated work, whether this hop fails) for one request."""
+def local_work(role, scenario, rng, failure_multiplier=1.0):
+    """Return (seconds of simulated work, whether this hop fails) for one request.
+
+    failure_multiplier scales each hop's failure probability to simulate a bad release.
+    """
     if role == "gateway":
         latency = rng.uniform(0.02, 0.08) if scenario == "browse" else rng.uniform(0.005, 0.02)
-        failed = scenario == "browse" and rng.random() < 0.02
+        failed = scenario == "browse" and rng.random() < 0.02 * failure_multiplier
     elif role == "checkout":
-        latency, failed = rng.uniform(0.01, 0.04), rng.random() < 0.01
+        latency, failed = rng.uniform(0.01, 0.04), rng.random() < 0.01 * failure_multiplier
     elif role == "payment":
-        latency, failed = rng.uniform(0.01, 0.03), rng.random() < 0.08
+        latency, failed = rng.uniform(0.01, 0.03), rng.random() < 0.08 * failure_multiplier
     else:
-        latency, failed = rng.uniform(0.01, 0.04), rng.random() < 0.01
+        latency, failed = rng.uniform(0.01, 0.04), rng.random() < 0.01 * failure_multiplier
     if rng.random() < 0.03:
         latency += rng.uniform(0.2, 0.6)
     return latency, failed
@@ -121,10 +126,11 @@ class IntervalMean:
 
 
 class Shop:
-    def __init__(self, role, downstream_url, otel, rng=None):
+    def __init__(self, role, downstream_url, otel, rng=None, failure_multiplier=1.0):
         from opentelemetry.metrics import Observation
 
         self.role = role
+        self.failure_multiplier = failure_multiplier
         self.span_name, downstream = ROLES[role]
         self.downstream_url = downstream_url if downstream else None
         self.otel = otel
@@ -178,7 +184,7 @@ class Shop:
 
     def _work(self, scenario, details):
         """Do this hop's work; return None on success or the (type, message) of the failure."""
-        latency, failed = local_work(self.role, scenario, self.rng)
+        latency, failed = local_work(self.role, scenario, self.rng, self.failure_multiplier)
         failure = local_failure(self.role, self.rng) if failed else None
         if self.role == "payment":
             with self.tracer.start_as_current_span(
@@ -241,7 +247,21 @@ def make_handler(shop):
     return Handler
 
 
-def setup_telemetry(role):
+def read_release(environ):
+    """Return (service.version, failure multiplier) from the environment, validated."""
+    version = environ.get("SERVICE_VERSION", VERSION)
+    if not VERSION_PATTERN.match(version):
+        raise ValueError("SERVICE_VERSION must be 1-64 letters, digits, and . + _ - characters")
+    try:
+        multiplier = float(environ.get("FAILURE_MULTIPLIER", "1"))
+    except ValueError:
+        raise ValueError("FAILURE_MULTIPLIER must be a number") from None
+    if not 0 <= multiplier <= 10:
+        raise ValueError("FAILURE_MULTIPLIER must be between 0 and 10")
+    return version, multiplier
+
+
+def setup_telemetry(role, version=VERSION):
     from opentelemetry import baggage, context, metrics, propagate, trace
     from opentelemetry._logs import SeverityNumber, set_logger_provider
     from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
@@ -260,7 +280,7 @@ def setup_telemetry(role):
     # demo.synthetic must be a boolean, so it is set in code, not by env var.
     resource = Resource.create({
         "service.name": role,
-        "service.version": VERSION,
+        "service.version": version,
         "deployment.environment.name": os.environ.get("DEPLOYMENT_ENVIRONMENT", "aks"),
         "demo.synthetic": True,
     })
@@ -294,8 +314,14 @@ def main():
     if not port.isdigit() or not 1024 <= int(port) <= 65535:
         print("PORT must be an unprivileged TCP port", file=sys.stderr)
         return 2
-    otel = setup_telemetry(role)
-    server = ThreadingHTTPServer(("0.0.0.0", int(port)), make_handler(Shop(role, downstream_url, otel)))
+    try:
+        version, failure_multiplier = read_release(os.environ)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 2
+    otel = setup_telemetry(role, version)
+    shop = Shop(role, downstream_url, otel, failure_multiplier=failure_multiplier)
+    server = ThreadingHTTPServer(("0.0.0.0", int(port)), make_handler(shop))
     signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=server.shutdown).start())
     print(f"{role} listening on :{port}", flush=True)
     try:

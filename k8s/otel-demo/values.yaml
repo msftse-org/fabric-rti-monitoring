@@ -27,6 +27,12 @@ images:
 apps:
   # SDK metric export interval. Each export produces one gauge point per scenario and outcome.
   metricExportIntervalMs: 15000
+  # Release reported as service.version. Change it with `helm upgrade --set apps.version=...`
+  # to compare releases in ReleaseHealth(); see docs/release-health.md.
+  version: "1.2.0"
+  # Scales every hop's simulated failure probability, to demonstrate a bad release:
+  # 0 disables simulated failures, 1 is the default mix, 4 roughly quadruples errors.
+  failureMultiplier: 1
 
 loadgen:
   enabled: true

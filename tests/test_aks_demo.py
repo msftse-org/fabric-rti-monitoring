@@ -40,6 +40,7 @@ class ShopTests(unittest.TestCase):
         payment.role = "payment"
         payment.downstream_url = "http://shipping:8080"
         payment.rng = random.Random(7)
+        payment.failure_multiplier = 1.0
         payment.tracer = MagicMock()
         propagate = MagicMock()
         propagate.inject.side_effect = lambda headers: headers.update({"traceparent": "test-parent"})
@@ -79,6 +80,23 @@ class ShopTests(unittest.TestCase):
                 patch.object(shop.urllib.request, "urlopen", side_effect=error):
             self.assertEqual(payment._work("checkout", {}),
                              ("DownstreamServiceError", "shipping returned HTTP 500"))
+
+    def test_release_version_and_failure_multiplier_are_validated(self):
+        self.assertEqual(shop.read_release({}), (shop.VERSION, 1.0))
+        self.assertEqual(shop.read_release({"SERVICE_VERSION": "1.3.0-rc.1", "FAILURE_MULTIPLIER": "4"}),
+                         ("1.3.0-rc.1", 4.0))
+        for environ in ({"SERVICE_VERSION": "1.3 bad"}, {"SERVICE_VERSION": ""}, {"SERVICE_VERSION": "v" * 65},
+                        {"FAILURE_MULTIPLIER": "-1"}, {"FAILURE_MULTIPLIER": "11"}, {"FAILURE_MULTIPLIER": "lots"}):
+            with self.subTest(environ=environ), self.assertRaises(ValueError):
+                shop.read_release(environ)
+
+    def test_failure_multiplier_scales_and_can_disable_simulated_failures(self):
+        def failures(multiplier):
+            rng = random.Random(11)
+            return sum(shop.local_work("payment", "checkout", rng, multiplier)[1] for _ in range(4000))
+
+        self.assertEqual(failures(0), 0)
+        self.assertGreater(failures(4), 3 * failures(1))
 
     def test_every_role_fails_with_a_typed_message_carrying_variable_values(self):
         rng = random.Random(3)

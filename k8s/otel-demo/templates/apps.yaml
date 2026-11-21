@@ -97,6 +97,10 @@ spec:
               value: delta
             - name: OTEL_METRIC_EXPORT_INTERVAL
               value: {{ $.Values.apps.metricExportIntervalMs | quote }}
+            - name: SERVICE_VERSION
+              value: {{ $.Values.apps.version | quote }}
+            - name: FAILURE_MULTIPLIER
+              value: {{ $.Values.apps.failureMultiplier | quote }}
             - name: POD_NAME
               valueFrom:
                 fieldRef:
