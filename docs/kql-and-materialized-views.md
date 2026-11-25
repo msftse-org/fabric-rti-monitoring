@@ -11,10 +11,14 @@ raw records. The executable contract is [fabric/schema.kql](../fabric/schema.kql
 | `OTELLogs` | Timestamp, severity, body, trace/span IDs, resource and log attributes. | `Logs1m` | Log count and error count by minute, service, and environment. |
 | `OTELTraces` | Parent/child span IDs, start/end time, status, attributes. | `Requests1m` | Root request count, error count, duration sum, and a t-digest sketch by minute, service, and environment. |
 | `OTELMetrics` | Metric name/type/unit/value and bounded dimensions. | `Metrics1m` | Sample count, sum, minimum, and maximum by minute, service, environment, and metric identity. |
+| `OTELTraces` | Failed spans and their `exception` events. | `Issues1h` | Events, first/last seen, and one example trace per hour, issue fingerprint, service, environment, and version. See [issues](issues-and-alerts.md). |
+| `OTELTraces` | Server spans. | `Releases1m` | Requests, errors, and a t-digest by minute, service, environment, and version. See [release health](release-health.md). |
 
 The views accept the synthetic contract and are created before the producer
 runs. They have one source table and one final `summarize`; time filtering happens
-when querying. No request, user, trace, or span identifier is a rollup dimension.
+when querying. No request, user, trace, or span identifier is a rollup dimension;
+`Issues1h` keeps one trace ID per row only as an aggregate example, and its
+fingerprint has one value per distinct failure, not per request.
 
 Raw data has a **7-day** retention policy and a **1-day** hot-cache policy.
 Materialized views use the Eventhouse's default retention with **1 day** hot;
@@ -29,6 +33,25 @@ preserve every raw record needed to reconstruct a trace.
 | `LogsOverview(lookback)` | Log and error counts over time. |
 | `RequestsOverview(lookback)` | Root request count, errors, mean duration, and approximate P50/P95 latency. |
 | `MetricDurationOverview(lookback)` | Duration gauge sample count, mean, minimum, and maximum. |
+
+Further function folders build on the same tables:
+
+| Folder | Functions | Guide |
+| --- | --- | --- |
+| Issues | `NormalizeErrorMessage`, `ErrorEvents`, `Issues`, `IssueStatus`, `IssueAlerts` | [Issues and alerts](issues-and-alerts.md) |
+| Releases | `ReleaseHealth`, `ReleaseComparison` | [Release health](release-health.md) |
+| Agents | `AgentSpans`, `AgentRuns`, `AgentOverview`, `AgentModels`, `AgentTools`, `AgentRun` | [AI agent tracing](ai-agents.md) |
+| Toolbox | `ServiceHealth`, `TopIssues`, `IssueDetail`, `TraceDetail`, `RecentErrors`, `TelemetryVolume`, `TelemetryCoverage` | Below |
+
+The **toolbox** functions are shaped like investigation tasks so that an AI agent
+connected through an Eventhouse MCP server can call one function by name rather
+than compose KQL over raw tables; the
+[investigation skill](../.github/skills/otel-eventhouse-investigation/SKILL.md)
+lists which to call for which question. `TelemetryVolume(lookback)` reports rows
+and estimated uncompressed bytes per hour, signal, service, and environment, the
+main driver of ingestion on the capacity. `TelemetryCoverage()` reports the oldest
+and newest stored row per raw table, which shows the retention actually in effect
+without a management command.
 
 The Grafana dashboards pass `30d` and apply Grafana's selected time range. Each
 function queries the **view name**, which combines its materialized part with

@@ -1,6 +1,6 @@
 ---
 name: otel-eventhouse-investigation
-description: Investigate the OpenTelemetry logs, traces, and metrics that this sample stores in a Microsoft Fabric Eventhouse. Use when asked about service health, error rates, latency, slow or failing traces, log and trace correlation, service dependencies, or whether telemetry is arriving from the AKS otel-demo services or the synthetic Container Apps job.
+description: Investigate the OpenTelemetry logs, traces, and metrics that this sample stores in a Microsoft Fabric Eventhouse. Use when asked about service health, error rates, latency, error issues and regressions, release health, AI agent runs and token usage, slow or failing traces, log and trace correlation, service dependencies, telemetry volume, or whether telemetry is arriving from the AKS otel-demo services or the synthetic Container Apps job.
 ---
 
 # Investigate OpenTelemetry data in the Fabric Eventhouse
@@ -40,6 +40,31 @@ Defined in `fabric/schema.kql`. All names are case sensitive.
 | `RequestsOverview(lookback)` | Function | Root request count, errors, average, approximate P50 and P95 |
 | `LogsOverview(lookback)` | Function | Log and error counts per minute |
 | `MetricDurationOverview(lookback)` | Function | `demo.request.duration` gauge statistics |
+| `Issues1h`, `Releases1m` | Materialized views | Hourly issue counts by fingerprint; per-minute server-span counts by version |
+| `IssueState` | Table | Append-only triage state (open, resolved, muted). Read it through `IssueStatus()`; never write it |
+
+### Toolbox: start here
+
+These functions answer the common questions in one call. Prefer them to
+hand-written KQL, and fall back to the recipes below for anything they do not
+cover.
+
+| Question | Call |
+| --- | --- |
+| Which services are unhealthy right now? | `ServiceHealth(15m)` |
+| What is breaking, grouped into distinct issues? | `TopIssues(24h, 10)` or `Issues(24h)` |
+| Show recent occurrences of one issue | `IssueDetail("<fingerprint>", 24h)` |
+| Which issues are new, regressed, or unmuted? | `IssueAlerts(1h)` |
+| Is the latest release worse than the previous one? | `ReleaseComparison(24h)`, then `ReleaseHealth(24h)` |
+| Explain one failing request | `TraceDetail("<trace id>")`: every span with offsets, status, exception, and log counts |
+| The newest failures for one service | `RecentErrors("payment", 1h)` (empty string for all) |
+| How are the AI agents doing? | `AgentOverview(1h)`, `AgentRuns(1h)`, `AgentModels(1h)`, `AgentTools(1h)` |
+| Walk through one agent run | `AgentRun("<trace id>")` |
+| What drives ingestion volume, and how much is stored? | `TelemetryVolume(24h)`, `TelemetryCoverage()` |
+
+An issue's `Title` is its exception type and a message with IDs and numbers
+replaced by placeholders such as `<uuid>` and `<n>`; quote it as is. Report the
+`Fingerprint` so a person can resolve or mute it with `scripts/issue-state.py`.
 
 Conventions:
 
@@ -60,12 +85,15 @@ Conventions:
 ## Workflow
 
 1. **Freshness**: confirm all three signals arrived recently (recipe 1).
-2. **Overview**: request volume, errors, and latency (recipe 2).
-3. **Hotspots**: failing services and span names (recipe 3).
+2. **Overview**: `ServiceHealth(15m)`, or request volume, errors, and latency
+   (recipe 2).
+3. **Hotspots**: `TopIssues(1h, 10)` groups failures into issues; recipe 3
+   lists failing span names.
 4. **Dependencies**: caller and callee error rates locate where failures start
    (recipe 4).
-5. **Trace drill-down**: pick a slow or failed `TraceID` (recipe 5), then
-   show its waterfall (recipe 6) and its logs (recipe 7).
+5. **Trace drill-down**: pick a slow or failed `TraceID` (recipe 5 or an
+   issue's `ExampleTraceID`), then `TraceDetail(traceId)`, or its waterfall
+   (recipe 6) and its logs (recipe 7).
 6. **Report**: state the time window, the numbers, and two or three example
    `TraceID` values. Point to the Grafana or Fabric Traces dashboard for the
    visual waterfall.
@@ -93,7 +121,7 @@ RequestsOverview(15m)
 // 3. Error hotspots by service and span
 OTELTraces
 | where StartTime > ago(15m) and SpanStatus == "STATUS_CODE_ERROR"
-| summarize Errors=count(), Sample=take_any(SpanStatusMessage) by Service=tostring(ResourceAttributes["service.name"]), SpanName
+| summarize Errors=count() by Service=tostring(ResourceAttributes["service.name"]), SpanName
 | top 10 by Errors
 ```
 

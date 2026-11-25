@@ -287,7 +287,7 @@
         "height": 4
       },
       "visualType": "markdownCard",
-      "markdownText": "[Metrics]({{url:metrics}}) · **Logs** · [Traces]({{url:traces}})\n\n**Search** takes text or a TraceID. Paste a TraceID into **Trace ID** on Traces for its waterfall.",
+      "markdownText": "[Metrics]({{url:metrics}}) · **Logs** · [Traces]({{url:traces}}) · [Issues]({{url:issues}}) · [Releases]({{url:releases}}) · [Agents]({{url:agents}})\n\n**Search** takes text or a TraceID. Paste a TraceID into **Trace ID** on Traces for its waterfall.",
       "visualOptions": {}
     },
     {
@@ -625,6 +625,9 @@
           },
           {
             "value": "notifications"
+          },
+          {
+            "value": "assistant"
           }
         ]
       },

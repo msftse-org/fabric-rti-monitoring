@@ -39,6 +39,8 @@ spec:
               value: {{ .Values.loadgen.requestsPerSecond | quote }}
             - name: CHECKOUT_RATIO
               value: {{ .Values.loadgen.checkoutRatio | quote }}
+            - name: ASSIST_RATIO
+              value: {{ .Values.loadgen.assistRatio | quote }}
             - name: RUN_ID_ROTATION_SECONDS
               value: {{ .Values.loadgen.runIdRotationSeconds | quote }}
           resources:

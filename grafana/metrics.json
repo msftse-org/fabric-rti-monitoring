@@ -137,7 +137,7 @@
         "label": "Service",
         "type": "custom",
         "description": "",
-        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, postgres : postgres",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, assistant : assistant, postgres : postgres",
         "current": {
           "text": "All services",
           "value": "all"
@@ -176,6 +176,11 @@
           {
             "text": "notifications",
             "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "assistant",
+            "value": "assistant",
             "selected": false
           },
           {
@@ -586,9 +591,29 @@
               "group": "A"
             },
             "axisSoftMin": 0,
-            "gradientMode": "none"
+            "gradientMode": "none",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
           },
-          "min": 0
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 3000
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -655,9 +680,29 @@
               "group": "A"
             },
             "axisSoftMin": 0,
-            "gradientMode": "none"
+            "gradientMode": "none",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
           },
-          "min": 0
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 3000
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -821,9 +866,29 @@
               "group": "A"
             },
             "axisSoftMin": 0,
-            "gradientMode": "none"
+            "gradientMode": "none",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
           },
-          "min": 0
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 3000
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -887,9 +952,29 @@
               "group": "A"
             },
             "axisSoftMin": 0,
-            "gradientMode": "none"
+            "gradientMode": "none",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
           },
-          "min": 0
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              },
+              {
+                "color": "red",
+                "value": 3000
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -1024,6 +1109,38 @@
               {
                 "id": "unit",
                 "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
               }
             ]
           },
@@ -1052,11 +1169,11 @@
                     },
                     {
                       "color": "orange",
-                      "value": 500
+                      "value": 1000
                     },
                     {
                       "color": "red",
-                      "value": 1000
+                      "value": 3000
                     }
                   ]
                 }
@@ -1122,6 +1239,75 @@
         "cellHeight": "sm",
         "footer": {
           "show": false
+        }
+      }
+    },
+    {
+      "id": 10,
+      "title": "Telemetry volume",
+      "description": "Estimated uncompressed megabytes ingested per hour by signal: the main driver of ingestion on the capacity.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "TelemetryVolume(now() - $__timeFrom)\n| where $__timeFilter(WindowStart)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| summarize MB=sum(EstimatedBytes) / 1e6 by WindowStart, Environment, Signal\n| project WindowStart, MB, Series=strcat(Environment, \" / \", Signal)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decmbytes",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
         }
       }
     }

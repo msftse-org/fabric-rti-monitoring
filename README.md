@@ -19,8 +19,8 @@ The sample provides several delivery surfaces over one telemetry store:
 
 | Surface | Tech | Primary Use | Output |
 | --- | --- | --- | --- |
-| **Grafana dashboards** | Azure Managed Grafana + KQL | Operational exploration | Metrics, Logs, and Traces dashboards with a trace waterfall and service map |
-| **Fabric dashboards** | Fabric Real-Time Dashboards | Native workspace visualization | Three matching dashboards with linked filters and trace investigation |
+| **Grafana dashboards** | Azure Managed Grafana + KQL | Operational exploration | Metrics, Logs, Traces, Issues, Releases, and Agents dashboards with a trace waterfall and service map |
+| **Fabric dashboards** | Fabric Real-Time Dashboards | Native workspace visualization | Six matching dashboards with linked filters, trace and agent-run investigation |
 | **Observability apps (optional)** | Rayfin + React + TypeScript | Compare familiar observability workflows | Unofficial Datadog, Coralogix, and groundcover mock apps |
 | **RTI On-Call app (optional)** | Rayfin + Fabric Functions + Activator | Compare on-call designs and author alerts | Simulated pages/schedules plus persistent, live Teams/email alert rules |
 | **Migration advisor (optional)** | Rayfin + React + local calculations | Plan migration, compare costs, and suggest OTel configuration | Feature mappings, pricing assumptions, Fabric-only or dual-output collector suggestions, and exports |
@@ -32,11 +32,21 @@ Core functionality includes:
   managed identity on Container Apps and workload identity on optional AKS.
 - **Correlated logs and traces** using run, trace, and span IDs, without
   high-cardinality identifiers in metric dimensions.
-- **Three minute-level materialized views** and reusable KQL serving functions.
+- **Minute-level materialized views** and reusable KQL serving functions.
+- **Error tracking:** failed spans grouped into issues by fingerprint, with
+  triage state and `new_issue`, `regression`, and `unmute` alerts through
+  Activator ([guide](docs/issues-and-alerts.md)).
+- **Release health** per `service.version`, comparing each release with the
+  previous one ([guide](docs/release-health.md)).
+- **AI agent tracing** from OpenTelemetry GenAI spans: runs, handoffs, tokens by
+  model, and tools ([guide](docs/ai-agents.md)).
+- **Investigation toolbox:** task-shaped KQL functions that AI agents call through
+  an Eventhouse MCP server, plus telemetry volume and coverage.
 - **Repeatable Azure setup** with Bicep or Terraform, followed by Fabric REST
   bootstrap and a separate database ingestor grant.
 - **Two workload modes:** a finite job with four synthetic service contexts, or
-  six instrumented AKS microservices with continuous traffic.
+  six instrumented AKS microservices plus a synthetic AI assistant with
+  continuous traffic and an on-disk collector queue.
 
 ---
 
@@ -140,10 +150,12 @@ Collector acknowledgement is not proof of Fabric ingestion; verify rows using
 
 ### 3. Open the dashboards
 
-Configure the Grafana managed-identity data source and import
-[`metrics.json`](grafana/metrics.json), [`logs.json`](grafana/logs.json), and
-[`traces.json`](grafana/traces.json) using the Grafana import screen.
-Optionally publish the three native Fabric dashboards with
+Configure the Grafana managed-identity data source and import the six dashboards
+in [`grafana/`](grafana/) ([`metrics.json`](grafana/metrics.json),
+[`logs.json`](grafana/logs.json), [`traces.json`](grafana/traces.json),
+[`issues.json`](grafana/issues.json), [`releases.json`](grafana/releases.json),
+and [`agents.json`](grafana/agents.json)) using the Grafana import screen.
+Optionally publish the six native Fabric dashboards with
 [`scripts/deploy-fabric-dashboard.py`](scripts/deploy-fabric-dashboard.py), as
 described in the deployment guide.
 

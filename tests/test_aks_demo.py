@@ -1,6 +1,7 @@
 """Offline tests for the AKS OpenTelemetry demo chart, apps, and contracts."""
 
 import importlib.util
+import random
 from pathlib import Path
 import re
 import threading
@@ -38,7 +39,8 @@ class ShopTests(unittest.TestCase):
         payment = shop.Shop.__new__(shop.Shop)
         payment.role = "payment"
         payment.downstream_url = "http://shipping:8080"
-        payment.rng = None
+        payment.rng = random.Random(7)
+        payment.failure_multiplier = 1.0
         payment.tracer = MagicMock()
         propagate = MagicMock()
         propagate.inject.side_effect = lambda headers: headers.update({"traceparent": "test-parent"})
@@ -50,7 +52,7 @@ class ShopTests(unittest.TestCase):
         with patch.object(shop, "local_work", return_value=(0, False)), \
                 patch.object(shop.urllib.request, "urlopen") as send:
             send.return_value.__enter__.return_value.status = 200
-            self.assertFalse(payment._work("checkout", {}))
+            self.assertIsNone(payment._work("checkout", {}))
             request = send.call_args.args[0]
             self.assertEqual(request.full_url, "http://shipping:8080/checkout")
             self.assertEqual(request.get_header("Traceparent"), "test-parent")
@@ -60,11 +62,71 @@ class ShopTests(unittest.TestCase):
         payment = self.payment()
         with patch.object(shop, "local_work", return_value=(0, True)), \
                 patch.object(shop.urllib.request, "urlopen") as send:
-            self.assertTrue(payment._work("checkout", {}))
+            failure = payment._work("checkout", {})
+            self.assertEqual(failure[0], "PaymentProcessingError")
             send.assert_not_called()
+        query = payment.tracer.start_as_current_span.return_value.__enter__.return_value
+        query.add_event.assert_called_once()
+        name, attributes = query.add_event.call_args.args
+        self.assertEqual(name, "exception")
+        self.assertEqual(attributes["exception.type"], "QueryCanceledError")
+        self.assertEqual(set(attributes), {"exception.type", "exception.message"})
         with patch.object(shop, "local_work", return_value=(0, False)), \
                 patch.object(shop.urllib.request, "urlopen", side_effect=ConnectionError):
-            self.assertTrue(payment._work("checkout", {}))
+            self.assertEqual(payment._work("checkout", {}),
+                             ("DownstreamServiceError", "shipping could not be reached"))
+        error = urllib.error.HTTPError("http://shipping:8080/checkout", 500, "failed", {}, None)
+        with patch.object(shop, "local_work", return_value=(0, False)), \
+                patch.object(shop.urllib.request, "urlopen", side_effect=error):
+            self.assertEqual(payment._work("checkout", {}),
+                             ("DownstreamServiceError", "shipping returned HTTP 500"))
+
+    def test_release_version_and_failure_multiplier_are_validated(self):
+        self.assertEqual(shop.read_release({}), (shop.VERSION, 1.0))
+        self.assertEqual(shop.read_release({"SERVICE_VERSION": "1.3.0-rc.1", "FAILURE_MULTIPLIER": "4"}),
+                         ("1.3.0-rc.1", 4.0))
+        for environ in ({"SERVICE_VERSION": "1.3 bad"}, {"SERVICE_VERSION": ""}, {"SERVICE_VERSION": "v" * 65},
+                        {"FAILURE_MULTIPLIER": "-1"}, {"FAILURE_MULTIPLIER": "11"}, {"FAILURE_MULTIPLIER": "lots"}):
+            with self.subTest(environ=environ), self.assertRaises(ValueError):
+                shop.read_release(environ)
+
+    def test_failure_multiplier_scales_and_can_disable_simulated_failures(self):
+        def failures(multiplier):
+            rng = random.Random(11)
+            return sum(shop.local_work("payment", "checkout", rng, multiplier)[1] for _ in range(4000))
+
+        self.assertEqual(failures(0), 0)
+        self.assertGreater(failures(4), 3 * failures(1))
+
+    def test_every_role_fails_with_a_typed_message_carrying_variable_values(self):
+        rng = random.Random(3)
+        for role in shop.ROLES:
+            with self.subTest(role=role):
+                exception_type, message = shop.local_failure(role, rng)
+                self.assertRegex(exception_type, r"^[A-Z][A-Za-z]+Error$")
+                self.assertRegex(message, r"[0-9]")
+                self.assertLessEqual(len(message), 256)
+        self.assertNotEqual(shop.local_failure("gateway", rng), shop.local_failure("gateway", rng))
+
+    def test_handle_records_one_exception_event_only_on_failure(self):
+        for failure in (None, ("CartValidationError", "cart 1 has 2 items with stale prices")):
+            with self.subTest(failure=failure):
+                checkout = shop.Shop.__new__(shop.Shop)
+                checkout.role, checkout.span_name = "checkout", "demo.checkout"
+                checkout.tracer, checkout.log = MagicMock(), MagicMock()
+                checkout.requests, checkout.durations = MagicMock(), shop.IntervalMean()
+                checkout.otel = {name: MagicMock() for name in (
+                    "propagate", "baggage", "context", "SpanKind", "StatusCode", "SeverityNumber")}
+                checkout.otel["baggage"].get_baggage.return_value = None
+                span = checkout.tracer.start_as_current_span.return_value.__enter__.return_value
+                with patch.object(checkout, "_work", return_value=failure):
+                    status = checkout.handle("checkout", {})
+                self.assertEqual(status, 500 if failure else 200)
+                if failure:
+                    span.add_event.assert_called_once_with("exception", {
+                        "exception.type": failure[0], "exception.message": failure[1]})
+                else:
+                    span.add_event.assert_not_called()
 
     def test_run_id_is_canonical_uuid_or_ignored(self):
         self.assertEqual(shop.parse_run_id("8E6299B9-0B6A-44B7-BE90-2CBB9B002F0F"),
@@ -134,9 +196,102 @@ class ShopTests(unittest.TestCase):
         self.assertIn("baggage", headers)
 
 
+class RecordingSpan:
+    def __init__(self, tracer, name, kind, attributes):
+        self.tracer, self.name, self.attributes, self.status, self.events = tracer, name, dict(attributes), None, []
+        self.parent = tracer.stack[-1].name if tracer.stack else None
+
+    def __enter__(self):
+        self.tracer.stack.append(self)
+        return self
+
+    def __exit__(self, *_):
+        self.tracer.stack.pop()
+
+    def set_attribute(self, key, value):
+        self.attributes[key] = value
+
+    def set_status(self, status):
+        self.status = status
+
+    def add_event(self, name, attributes):
+        self.events.append((name, attributes))
+
+
+class RecordingTracer:
+    def __init__(self):
+        self.stack, self.spans = [], []
+
+    def start_as_current_span(self, name, kind=None, attributes=None):
+        span = RecordingSpan(self, name, kind, attributes or {})
+        self.spans.append(span)
+        return span
+
+
+class AssistantTests(unittest.TestCase):
+    def run_agent(self, seed, multiplier=1.0):
+        assistant = shop.Shop.__new__(shop.Shop)
+        assistant.role, assistant.rng, assistant.failure_multiplier = "assistant", random.Random(seed), multiplier
+        assistant.tracer = RecordingTracer()
+        assistant.otel = {"SpanKind": MagicMock(), "StatusCode": MagicMock()}
+        with patch.object(shop.time, "sleep"):
+            failure = assistant._work("assist", {"demo.scenario": "assist"})
+        return failure, assistant.tracer.spans
+
+    def test_agent_runs_follow_genai_conventions_without_content(self):
+        for seed in range(40):
+            failure, spans = self.run_agent(seed, multiplier=0)
+            self.assertIsNone(failure)
+            names = [span.name for span in spans]
+            self.assertEqual(names[0], "invoke_agent support-agent")
+            self.assertRegex(" ".join(names), r"chat demo-chat-small.*execute_tool lookup_order")
+            for span in spans:
+                self.assertRegex(span.name, r"^(invoke_agent|chat|execute_tool) [A-Za-z0-9._-]{1,64}$")
+                self.assertEqual(span.attributes["gen_ai.provider.name"], "demo")
+                self.assertTrue(all(key.startswith(("gen_ai.", "demo.")) for key in span.attributes))
+                self.assertFalse({"gen_ai.input.messages", "gen_ai.output.messages"} & set(span.attributes))
+                if span.name.startswith("chat "):
+                    self.assertGreater(span.attributes["gen_ai.usage.input_tokens"], 0)
+                    self.assertIn(span.attributes["gen_ai.response.finish_reasons"], (["tool_calls"], ["stop"]))
+        handoffs = sum(any(s.name == "invoke_agent refunds-agent" for s in self.run_agent(seed, 0)[1]) for seed in range(40))
+        self.assertGreater(handoffs, 0)
+
+    def test_tool_and_model_failures_mark_the_run_and_record_exceptions(self):
+        failures = [self.run_agent(seed, multiplier=10) for seed in range(30)]
+        failed = [(failure, spans) for failure, spans in failures if failure]
+        self.assertTrue(failed)
+        for failure, spans in failed:
+            self.assertEqual(failure[0], "AgentRunError")
+            erroring = [span for span in spans if span.events]
+            self.assertTrue(any(span.name.startswith("invoke_agent") for span in erroring))
+            types = {event[1]["exception.type"] for span in erroring for event in span.events}
+            self.assertTrue(types & {"ToolExecutionError", "RateLimitError"})
+
+    def test_gateway_routes_assist_to_the_assistant(self):
+        gateway = shop.Shop.__new__(shop.Shop)
+        gateway.role, gateway.rng, gateway.failure_multiplier = "gateway", random.Random(1), 0
+        gateway.downstream_url, gateway.assistant_url = "http://checkout:8080", "http://assistant:8080"
+        gateway.otel = {"propagate": MagicMock()}
+        with patch.object(shop.time, "sleep"), patch.object(shop.urllib.request, "urlopen") as send:
+            send.return_value.__enter__.return_value.status = 200
+            self.assertIsNone(gateway._work("assist", {}))
+        self.assertEqual(send.call_args.args[0].full_url, "http://assistant:8080/assist")
+        with patch.object(shop.time, "sleep"), \
+                patch.object(shop.urllib.request, "urlopen", side_effect=ConnectionError):
+            self.assertEqual(gateway._work("assist", {}),
+                             ("DownstreamServiceError", "assistant could not be reached"))
+
+
 class LoadgenTests(unittest.TestCase):
     def test_defaults_target_the_in_cluster_gateway(self):
-        self.assertEqual(loadgen.read_settings({}), ("http://gateway:8080", 1.0, 0.5, 3600))
+        self.assertEqual(loadgen.read_settings({}), ("http://gateway:8080", 1.0, 0.5, 3600, 0.1))
+
+    def test_scenarios_mix_assist_checkout_and_browse(self):
+        rng = random.Random(5)
+        picks = [loadgen.pick_scenario(rng, 0.5, 0.1) for _ in range(5000)]
+        self.assertAlmostEqual(picks.count("assist") / len(picks), 0.1, delta=0.02)
+        self.assertEqual(set(picks), {"assist", "checkout", "browse"})
+        self.assertNotIn("assist", {loadgen.pick_scenario(rng, 0.5, 0) for _ in range(500)})
 
     def test_unsafe_or_out_of_range_settings_are_rejected(self):
         for environ in (
@@ -147,6 +302,7 @@ class LoadgenTests(unittest.TestCase):
             {"REQUESTS_PER_SECOND": "50"},
             {"CHECKOUT_RATIO": "1.5"},
             {"RUN_ID_ROTATION_SECONDS": "5"},
+            {"ASSIST_RATIO": "1.5"},
         ):
             with self.subTest(environ=environ), self.assertRaises(ValueError):
                 loadgen.read_settings(environ)
@@ -161,7 +317,7 @@ class ContractTests(unittest.TestCase):
 
         downstreams = {role: downstream or "" for role, (_, downstream) in shop.ROLES.items()}
         self.assertEqual(template_map("apps.yaml"), downstreams)
-        expected_ingress = {"gateway": "loadgen"}
+        expected_ingress = {"gateway": "loadgen", "assistant": "gateway"}
         expected_ingress.update({target: source for source, target in downstreams.items() if target})
         self.assertEqual(template_map("networkpolicies.yaml"), expected_ingress)
         selector = processor_block((CHART / "files/collector.yaml").read_text(), "filter/synthetic")
@@ -175,6 +331,41 @@ class ContractTests(unittest.TestCase):
         self.assertIn("use_azure_auth: true", aks)
         self.assertNotIn("managed_identity_id", aks)
         self.assertEqual(aks.count("processors: [memory_limiter, filter/synthetic, resource/k8s, transform/demo, batch]"), 3)
+
+    def test_every_collector_keeps_only_sanitized_exception_events(self):
+        def spanevent_rules(path):
+            config = (ROOT / path).read_text()
+            block = re.search(r"^      - context: spanevent\n        statements:\n((?:          - .*\n)+)", config, re.M)
+            self.assertIsNotNone(block, path)
+            self.assertIn("      spanevent:\n        - 'name != \"exception\"'\n", config, path)
+            return block.group(1)
+
+        rules = {path: spanevent_rules(path) for path in (
+            "collector/cloud.yaml", "collector/local.yaml", "k8s/otel-demo/files/collector.yaml")}
+        self.assertEqual(len(set(rules.values())), 1, "exception event rules differ between collectors")
+        statements = next(iter(rules.values()))
+        self.assertIn('keep_keys(attributes, ["exception.type", "exception.message"])', statements)
+        self.assertNotIn("exception.stacktrace", statements)
+        for placeholder in ("<uuid>", "<email>", "<ip>", "<hex>", "<n>"):
+            self.assertIn(f'"{placeholder}")', statements)
+        self.assertIn("truncate_all(attributes, 256)", statements)
+
+    def test_aks_collector_queues_exports_on_disk_owned_by_one_pod(self):
+        config = (CHART / "files/collector.yaml").read_text()
+        template = (CHART / "templates/collector.yaml").read_text()
+        self.assertRegex(config, r"file_storage/queue:\n    directory: /var/lib/otelcol/queue\n")
+        self.assertIn("      storage: file_storage/queue", config)
+        # Longer than the 30s termination grace period, so a replacement pod waits for the lock.
+        self.assertIn("    timeout: 45s\n", config)
+        self.assertIn("extensions: [health_check, file_storage/queue]", config)
+        self.assertIn("mountPath: /var/lib/otelcol/queue", template)
+        self.assertRegex(template, r"rollingUpdate:\n      maxSurge: 0\n      maxUnavailable: 1")
+        self.assertIn("kind: PersistentVolumeClaim", template)
+        self.assertIn('accessModes: ["ReadWriteOnce"]', template)
+        # The Container Apps collector has no disk and stays in memory.
+        self.assertNotIn("file_storage", (ROOT / "collector/cloud.yaml").read_text())
+        workflow = (ROOT / ".github/workflows/validate.yml").read_text()
+        self.assertIn("--tmpfs /var/lib/otelcol/queue", workflow)
 
     def test_chart_identity_matches_terraform_federated_credential_subject(self):
         module = (ROOT / "infra/terraform/modules/aks/main.tf").read_text()

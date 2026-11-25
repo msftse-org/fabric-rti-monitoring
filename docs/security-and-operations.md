@@ -30,8 +30,14 @@ already delivered by this sample.
 
 The producer emits only fabricated data. The collector requires `demo.synthetic`
 and fixed demo span/metric names, keeps a short list of resource and record
-attributes, replaces log bodies, clears span status messages, and drops span
-events. The marker is a selector, not authentication. Allowed attribute values,
+attributes, replaces log bodies, clears span status messages, and drops every span
+event except `exception`. From exception events it keeps only `exception.type`
+and `exception.message`, drops stack traces, replaces UUIDs, email addresses, IPv4
+addresses, long hex strings, and numbers in the message with placeholders such as
+`<uuid>` and `<n>`, and truncates both values to 256 characters. Issue grouping
+reads these cleaned messages. Pattern replacement is a demo control, not a complete
+redaction: names, free text, and other identifiers in an exception message pass
+through. The marker is a selector, not authentication. Allowed attribute values,
 links, scope metadata, and other fields can still carry sensitive content if a
 different producer is connected. Define and verify a workload-specific data
 contract before accepting real traffic.

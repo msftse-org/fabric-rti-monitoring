@@ -1,0 +1,729 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_FABRIC",
+      "label": "Fabric Eventhouse",
+      "description": "Azure Data Explorer datasource configured for this demo KQL database",
+      "type": "datasource",
+      "pluginId": "grafana-azure-data-explorer-datasource",
+      "pluginName": "Azure Data Explorer Datasource"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "grafana-azure-data-explorer-datasource",
+      "name": "Azure Data Explorer Datasource",
+      "version": "4.6.1"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "timeseries",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "logs",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "bargauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "table",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "uid": "fabric-rti-issues",
+  "title": "Fabric RTI Issues",
+  "description": "Failed spans grouped into issues by fingerprint, with triage status, lifecycle alerts and recent occurrences.",
+  "tags": [
+    "fabric-rti",
+    "issues"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Fabric RTI",
+      "type": "dashboards",
+      "tags": [
+        "fabric-rti"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "database",
+        "label": "KQL database",
+        "type": "textbox",
+        "query": "Observability",
+        "description": "Eventhouse KQL database that stores the OTEL tables.",
+        "current": {
+          "text": "Observability",
+          "value": "Observability"
+        },
+        "hide": 0
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "description": "",
+        "query": "All environments : all, AKS : aks, Container Apps job : demo",
+        "current": {
+          "text": "All environments",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All environments",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "AKS",
+            "value": "aks",
+            "selected": false
+          },
+          {
+            "text": "Container Apps job",
+            "value": "demo",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "description": "",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, assistant : assistant, postgres : postgres",
+        "current": {
+          "text": "All services",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All services",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "gateway",
+            "value": "gateway",
+            "selected": false
+          },
+          {
+            "text": "checkout",
+            "value": "checkout",
+            "selected": false
+          },
+          {
+            "text": "inventory",
+            "value": "inventory",
+            "selected": false
+          },
+          {
+            "text": "payment",
+            "value": "payment",
+            "selected": false
+          },
+          {
+            "text": "shipping",
+            "value": "shipping",
+            "selected": false
+          },
+          {
+            "text": "notifications",
+            "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "assistant",
+            "value": "assistant",
+            "selected": false
+          },
+          {
+            "text": "postgres",
+            "value": "postgres",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "fingerprint",
+        "label": "Fingerprint",
+        "type": "textbox",
+        "query": "",
+        "description": "Show occurrences of one issue. Set from the Issues table.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Issue summary",
+      "description": "Issues active in the selected range. New means first seen in the range.",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "Issues(now() - $__timeFrom)\n| where $__timeFilter(LastSeen)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| summarize Issues=dcount(Fingerprint), Unresolved=dcountif(Fingerprint, Status != \"resolved\"),\n    New=dcountif(Fingerprint, FirstSeen >= $__timeFrom), Events=sum(Events)",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "New"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Events by issue",
+      "description": "Hourly events for the ten busiest issues, from the Issues1h materialized view.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let top_issues = Issues1h\n| where WindowStart between (bin($__timeFrom, 1h) .. $__timeTo)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| summarize Events=sum(EventCount) by Fingerprint\n| top 10 by Events;\nIssues1h\n| where WindowStart between (bin($__timeFrom, 1h) .. $__timeTo)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| where Fingerprint in ((top_issues | project Fingerprint))\n| summarize Events=sum(EventCount) by WindowStart, Environment, Title=strcat(ExceptionType, \": \", Message)\n| project WindowStart, Events, Series=strcat(Environment, \" / \", Title)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Issues",
+      "description": "One row per issue and environment. Select a fingerprint to list its occurrences below; resolve or mute it with scripts/issue-state.py.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "Issues(now() - $__timeFrom)\n| where $__timeFilter(LastSeen)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| project Status, Title, Culprit, Environment, Events, FirstSeen, LastSeen, IntroducedIn, Versions=strcat_array(Versions, \", \"), Fingerprint, ExampleTraceID\n| order by Events desc\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "open": {
+                        "text": "open",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "muted": {
+                        "text": "muted",
+                        "color": "text",
+                        "index": 1
+                      },
+                      "resolved": {
+                        "text": "resolved",
+                        "color": "green",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fingerprint"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show occurrences",
+                    "url": "/d/fabric-rti-issues/fabric-rti-issues?var-fingerprint=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&var-service=${service:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ExampleTraceID"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Example trace"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open trace waterfall",
+                    "url": "/d/fabric-rti-traces/fabric-rti-traces?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open logs for this trace",
+                    "url": "/d/fabric-rti-logs/fabric-rti-logs?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Title"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 420
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Events"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Issue alerts",
+      "description": "new_issue, regression and unmute transitions inside the selected range, as Activator sends them.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "IssueAlerts(now() - $__timeFrom)\n| where $__timeFilter(LastEvent)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| project AlertType, Title, Service, Environment, Events, FirstEvent, LastEvent, Fingerprint, ExampleTraceID\n| take 100",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AlertType"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "new_issue": {
+                        "text": "new_issue",
+                        "color": "orange",
+                        "index": 0
+                      },
+                      "regression": {
+                        "text": "regression",
+                        "color": "red",
+                        "index": 1
+                      },
+                      "unmute": {
+                        "text": "unmute",
+                        "color": "purple",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ExampleTraceID"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Example trace"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open trace waterfall",
+                    "url": "/d/fabric-rti-traces/fabric-rti-traces?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open logs for this trace",
+                    "url": "/d/fabric-rti-logs/fabric-rti-logs?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Occurrences of the selected issue",
+      "description": "The newest 50 failed spans of the fingerprint chosen in Issues.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let fingerprint_filter = ${fingerprint:singlequote};\nErrorEvents(now() - $__timeFrom)\n| where $__timeFilter(Timestamp)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| where isempty(fingerprint_filter) or Fingerprint == fingerprint_filter\n| top 50 by Timestamp desc\n| project Timestamp, Service, Version, SpanName, Title=strcat(ExceptionType, \": \", Message), TraceID",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TraceID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open trace waterfall",
+                    "url": "/d/fabric-rti-traces/fabric-rti-traces?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open logs for this trace",
+                    "url": "/d/fabric-rti-logs/fabric-rti-logs?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

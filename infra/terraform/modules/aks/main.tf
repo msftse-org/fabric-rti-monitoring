@@ -67,6 +67,12 @@ resource "azurerm_kubernetes_cluster" "main" {
       authorized_ip_ranges = api_server_access_profile.value
     }
   }
+
+  lifecycle {
+    # Organizations often enable Defender for Containers by Azure Policy. This
+    # module does not own that control, so a plan must never remove it.
+    ignore_changes = [microsoft_defender]
+  }
 }
 
 # Kubernetes data-plane access through Entra ID; local accounts are disabled.

@@ -161,7 +161,7 @@
         "label": "Service",
         "type": "custom",
         "description": "",
-        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, postgres : postgres",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, assistant : assistant, postgres : postgres",
         "current": {
           "text": "All services",
           "value": "all"
@@ -200,6 +200,11 @@
           {
             "text": "notifications",
             "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "assistant",
+            "value": "assistant",
             "selected": false
           },
           {

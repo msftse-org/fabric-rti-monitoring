@@ -43,6 +43,8 @@ def run(config_path, extra_env, marker):
     try:
         subprocess.run(['docker', 'run', '--detach', '--name', name,
                         '--publish', '127.0.0.1::4318', '--publish', '127.0.0.1::13133',
+                        # The AKS config keeps its export queue on disk (file_storage).
+                        '--tmpfs', '/var/lib/otelcol/queue',
                         *env_flags, IMAGE, '--config=env:OTEL_CONFIG'],
                        check=True, env=environment, stdout=subprocess.DEVNULL)
         created = True
@@ -88,14 +90,16 @@ def run(config_path, extra_env, marker):
         deadline = time.monotonic() + 15
         while True:
             logs = docker('logs', name)
+            # Request 4 fails: its exception messages must arrive with numbers replaced.
             expected = ['Synthetic request completed', 'demo.request', 'demo.request.duration',
-                        'demo.inventory', 'demo.shipping', 'demo.notifications', *filter(None, [marker])]
+                        'demo.inventory', 'demo.shipping', 'demo.notifications', 'QueryCanceledError',
+                        'orders.id=<n>', *filter(None, [marker])]
             if all(item in logs for item in expected):
                 break
             if time.monotonic() > deadline:
                 raise RuntimeError('All three signals were not exported to the debug sink')
             time.sleep(0.5)
-        if any(value in logs for value in (forbidden, 'DROP_UNMARKED_PRODUCER', 'DROP_UNKNOWN_SPAN')):
+        if any(value in logs for value in (forbidden, 'DROP_UNMARKED_PRODUCER', 'DROP_UNKNOWN_SPAN', 'orders.id=40028')):
             raise RuntimeError('Collector did not apply the sample transform/filter policy')
         print(f'{config_path} passed: env config, OTLP JSON, three signals, filtering, and body/attribute transformation.')
     except Exception:

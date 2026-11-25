@@ -264,7 +264,7 @@
         "height": 4
       },
       "visualType": "markdownCard",
-      "markdownText": "[Metrics]({{url:metrics}}) · [Logs]({{url:logs}}) · **Traces**\n\nPick a trace in **Trace**, paste one from Logs into **Trace ID**, or right-click a TraceID in *Find a trace* → **Cross-filter**. Red bars in the waterfall failed.",
+      "markdownText": "[Metrics]({{url:metrics}}) · [Logs]({{url:logs}}) · **Traces** · [Issues]({{url:issues}}) · [Releases]({{url:releases}}) · [Agents]({{url:agents}})\n\nPick a trace in **Trace**, paste one from Logs into **Trace ID**, or right-click a TraceID in *Find a trace* → **Cross-filter**. Red bars in the waterfall failed.",
       "visualOptions": {}
     },
     {
@@ -830,6 +830,9 @@
           },
           {
             "value": "notifications"
+          },
+          {
+            "value": "assistant"
           }
         ]
       },

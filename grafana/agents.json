@@ -1,0 +1,1069 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_FABRIC",
+      "label": "Fabric Eventhouse",
+      "description": "Azure Data Explorer datasource configured for this demo KQL database",
+      "type": "datasource",
+      "pluginId": "grafana-azure-data-explorer-datasource",
+      "pluginName": "Azure Data Explorer Datasource"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "11.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "grafana-azure-data-explorer-datasource",
+      "name": "Azure Data Explorer Datasource",
+      "version": "4.6.1"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "timeseries",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "logs",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "bargauge",
+      "name": "bargauge",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "table",
+      "version": ""
+    }
+  ],
+  "id": null,
+  "uid": "fabric-rti-agents",
+  "title": "Fabric RTI Agents",
+  "description": "AI agent runs from OpenTelemetry GenAI spans: runs, failures, handoffs, token usage by model, tools, and a per-run step list.",
+  "tags": [
+    "fabric-rti",
+    "agents"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Fabric RTI",
+      "type": "dashboards",
+      "tags": [
+        "fabric-rti"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "icon": "external link"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "database",
+        "label": "KQL database",
+        "type": "textbox",
+        "query": "Observability",
+        "description": "Eventhouse KQL database that stores the OTEL tables.",
+        "current": {
+          "text": "Observability",
+          "value": "Observability"
+        },
+        "hide": 0
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "description": "",
+        "query": "All environments : all, AKS : aks, Container Apps job : demo",
+        "current": {
+          "text": "All environments",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All environments",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "AKS",
+            "value": "aks",
+            "selected": false
+          },
+          {
+            "text": "Container Apps job",
+            "value": "demo",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "custom",
+        "description": "",
+        "query": "All services : all, gateway : gateway, checkout : checkout, inventory : inventory, payment : payment, shipping : shipping, notifications : notifications, assistant : assistant, postgres : postgres",
+        "current": {
+          "text": "All services",
+          "value": "all"
+        },
+        "options": [
+          {
+            "text": "All services",
+            "value": "all",
+            "selected": true
+          },
+          {
+            "text": "gateway",
+            "value": "gateway",
+            "selected": false
+          },
+          {
+            "text": "checkout",
+            "value": "checkout",
+            "selected": false
+          },
+          {
+            "text": "inventory",
+            "value": "inventory",
+            "selected": false
+          },
+          {
+            "text": "payment",
+            "value": "payment",
+            "selected": false
+          },
+          {
+            "text": "shipping",
+            "value": "shipping",
+            "selected": false
+          },
+          {
+            "text": "notifications",
+            "value": "notifications",
+            "selected": false
+          },
+          {
+            "text": "assistant",
+            "value": "assistant",
+            "selected": false
+          },
+          {
+            "text": "postgres",
+            "value": "postgres",
+            "selected": false
+          }
+        ],
+        "multi": false,
+        "includeAll": false,
+        "hide": 0
+      },
+      {
+        "name": "trace_id",
+        "label": "Trace ID",
+        "type": "textbox",
+        "query": "",
+        "description": "Show the steps of one agent run. Set from Recent runs.",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Agent summary",
+      "description": "Runs in the selected range. Token counts are exact; cost is not estimated.",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let runs = AgentSpans(now() - $__timeFrom)\n| where $__timeFilter(StartTime)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| distinct TraceID;\nAgentRuns(now() - $__timeFrom)\n| where TraceID in (runs)\n| summarize Runs=count(), FailedRuns=countif(Failed), Handoffs=countif(Handoff), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens), P95RunMs=percentile(DurationMs, 95)",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95RunMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95 run"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "FailedRuns"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Runs per minute",
+      "description": "Agent runs by outcome.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let runs = AgentSpans(now() - $__timeFrom)\n| where $__timeFilter(StartTime)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| distinct TraceID;\nAgentRuns(now() - $__timeFrom)\n| where TraceID in (runs)\n| summarize Runs=count() by WindowStart=bin(Start, 1m), Environment, Outcome=iff(Failed, \"failed\", \"success\")\n| project WindowStart, Runs, Series=strcat(Environment, \" / \", Outcome)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ failed$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*/ success$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Tokens per minute by model",
+      "description": "Input plus output tokens of chat calls.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "AgentSpans(now() - $__timeFrom)\n| where $__timeFilter(StartTime)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| where Operation == \"chat\"\n| summarize Tokens=sum(InputTokens + OutputTokens) by WindowStart=bin(StartTime, 1m), Environment, Model\n| project WindowStart, Tokens, Series=strcat(Environment, \" / \", Model)\n| order by WindowStart asc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "displayName": "${__field.labels.Series}",
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "pointSize": 4,
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0,
+            "gradientMode": "none"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Models",
+      "description": "Calls, errors, tokens and p95 latency per model.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "AgentSpans(now() - $__timeFrom)\n| where $__timeFilter(StartTime)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| where Operation == \"chat\"\n| summarize Calls=count(), Errors=countif(Failed), InputTokens=sum(InputTokens), OutputTokens=sum(OutputTokens), P95Ms=percentile(DurationMs, 95) by Model, Environment\n| order by Calls desc\n| take 50",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95Ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Tools",
+      "description": "Calls, errors and p95 latency per tool and agent.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "AgentSpans(now() - $__timeFrom)\n| where $__timeFilter(StartTime)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| where Operation == \"execute_tool\"\n| summarize Calls=count(), Errors=countif(Failed), P95Ms=percentile(DurationMs, 95) by Tool, Agent, Environment\n| extend ErrorRate=todouble(Errors) / Calls\n| order by Calls desc\n| take 50",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ErrorRate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 0.01
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.05
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "P95Ms"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "p95"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Recent runs",
+      "description": "Newest 100 runs. Select a TraceID for its steps below, or open the full waterfall.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let runs = AgentSpans(now() - $__timeFrom)\n| where $__timeFilter(StartTime)\n| where ${environment:singlequote} == \"all\" or Environment == ${environment:singlequote}\n| where ${service:singlequote} == \"all\" or Service == ${service:singlequote}\n| distinct TraceID;\nAgentRuns(now() - $__timeFrom)\n| where TraceID in (runs)\n| project Start, Outcome=iff(Failed, \"failed\", \"success\"), EntryAgent, Agents=strcat_array(Agents, \" > \"), Tools=strcat_array(Tools, \", \"), ModelCalls, ToolCalls, InputTokens, OutputTokens, DurationMs, TraceID\n| top 100 by Start desc",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Outcome"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "failed": {
+                        "text": "failed",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "success": {
+                        "text": "success",
+                        "color": "green",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DurationMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Duration"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TraceID"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show this run's steps",
+                    "url": "/d/fabric-rti-agents/fabric-rti-agents?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&var-service=${service:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open trace waterfall",
+                    "url": "/d/fabric-rti-traces/fabric-rti-traces?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  },
+                  {
+                    "title": "Open logs for this trace",
+                    "url": "/d/fabric-rti-logs/fabric-rti-logs?var-trace_id=${__value.raw}&var-database=${database:percentencode}&var-environment=${environment:percentencode}&from=${__from}&to=${__to}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Steps in the selected run",
+      "description": "Every agent, model call and tool call of the run chosen above, in order. Offset is the time since the run started.",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-azure-data-explorer-datasource",
+        "uid": "${DS_FABRIC}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-azure-data-explorer-datasource",
+            "uid": "${DS_FABRIC}"
+          },
+          "database": "$database",
+          "query": "let selected_trace = ${trace_id:singlequote};\nAgentRun(selected_trace)\n| where $__timeFilter(StartTime)\n| where isnotempty(selected_trace)\n| project Step, Operation, OffsetMs, DurationMs, InputTokens, OutputTokens, Status\n| take 200",
+          "querySource": "raw",
+          "queryType": "KQL",
+          "rawMode": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "DurationMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Duration"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1000
+                    },
+                    {
+                      "color": "red",
+                      "value": 3000
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "OffsetMs"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Offset"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "STATUS_CODE_ERROR": {
+                        "text": "STATUS_CODE_ERROR",
+                        "color": "red",
+                        "index": 0
+                      },
+                      "STATUS_CODE_OK": {
+                        "text": "STATUS_CODE_OK",
+                        "color": "green",
+                        "index": 1
+                      },
+                      "STATUS_CODE_UNSET": {
+                        "text": "STATUS_CODE_UNSET",
+                        "color": "text",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}

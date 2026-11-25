@@ -91,6 +91,7 @@ jobs:
             --env KUSTO_CLUSTER_URI=https://example.kusto.fabric.microsoft.com \
             --env KUSTO_DATABASE=Observability \
             --env K8S_CLUSTER_NAME=dev-aks-frti \
+            --tmpfs /var/lib/otelcol/queue \
             --volume "$PWD/k8s/otel-demo/files:/etc/otelcol:ro" \
             "$COLLECTOR_IMAGE" validate --config=/etc/otelcol/collector.yaml
       - name: Run cloud and AKS processors with a local debug sink

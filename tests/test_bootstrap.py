@@ -364,11 +364,12 @@ class DashboardDeployTests(unittest.TestCase):
         return deploy.parse_args(["--database-name", "observability"] +
                                  [item for key, value in overrides.items() for item in (key, value)])
 
-    def test_three_definitions_are_bound_and_navigation_urls_are_resolved(self):
+    def test_every_definition_is_bound_and_navigation_urls_are_resolved(self):
         dashboards = [{"id": subject, "displayName": deploy.TITLES[subject]} for subject in deploy.SUBJECTS]
         client = DashboardClient(dashboards)
         results = deploy.deploy(client, self.arguments(**{"--workspace-name": "demo"}), TEMPLATES)
-        self.assertEqual(len(client.mutations), 3)
+        self.assertEqual(len(client.mutations), len(deploy.SUBJECTS))
+        self.assertEqual(deploy.SUBJECTS, ("metrics", "logs", "traces", "issues", "releases", "agents"))
         self.assertEqual([result["subject"] for result in results], list(deploy.SUBJECTS))
         for (method, path, body), subject, result in zip(client.mutations, deploy.SUBJECTS, results):
             self.assertEqual((method, path), (
@@ -398,8 +399,8 @@ class DashboardDeployTests(unittest.TestCase):
                          [("created", "new-" + subject) for subject in deploy.SUBJECTS])
         creates = [mutation for mutation in client.mutations if mutation[1] == "/workspaces/workspace/kqlDashboards"]
         updates = [mutation for mutation in client.mutations if mutation[1].endswith("/updateDefinition")]
-        self.assertEqual(len(creates), 3)
-        self.assertEqual(len(updates), 3)
+        self.assertEqual(len(creates), len(deploy.SUBJECTS))
+        self.assertEqual(len(updates), len(deploy.SUBJECTS))
         self.assertEqual([mutation[2]["displayName"] for mutation in creates],
                          [deploy.TITLES[subject] for subject in deploy.SUBJECTS])
 

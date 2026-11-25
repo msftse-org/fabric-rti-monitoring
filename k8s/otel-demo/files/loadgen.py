@@ -18,7 +18,7 @@ import uuid
 
 
 def read_settings(environ):
-    """Validate and return (target, requests_per_second, checkout_ratio, rotation_seconds)."""
+    """Validate and return (target, requests_per_second, checkout_ratio, rotation_seconds, assist_ratio)."""
     target = environ.get("TARGET_URL", "http://gateway:8080").rstrip("/")
     parsed = urllib.parse.urlsplit(target)
     if (parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username
@@ -33,7 +33,17 @@ def read_settings(environ):
     rotation = int(environ.get("RUN_ID_ROTATION_SECONDS", "3600"))
     if not 60 <= rotation <= 86400:
         raise ValueError("RUN_ID_ROTATION_SECONDS must be between 60 and 86400")
-    return target, rate, ratio, rotation
+    assist = float(environ.get("ASSIST_RATIO", "0.1"))
+    if not 0 <= assist <= 1:
+        raise ValueError("ASSIST_RATIO must be between 0 and 1")
+    return target, rate, ratio, rotation, assist
+
+
+def pick_scenario(rng, checkout_ratio, assist_ratio):
+    """An AI-assistant conversation with probability assist_ratio, otherwise checkout or browse."""
+    if rng.random() < assist_ratio:
+        return "assist"
+    return "checkout" if rng.random() < checkout_ratio else "browse"
 
 
 def send(target, scenario, run_id):
@@ -48,7 +58,7 @@ def send(target, scenario, run_id):
 
 def main():
     try:
-        target, rate, ratio, rotation = read_settings(os.environ)
+        target, rate, ratio, rotation, assist = read_settings(os.environ)
     except ValueError as error:
         print(f"Invalid settings: {error}", file=sys.stderr)
         return 2
@@ -64,7 +74,7 @@ def main():
         if now - rotated_at >= rotation:
             run_id, rotated_at = str(uuid.uuid4()), now
             print(f"New run ID {run_id}", flush=True)
-        scenario = "checkout" if rng.random() < ratio else "browse"
+        scenario = pick_scenario(rng, ratio, assist)
         sent += 1
         failed += not send(target, scenario, run_id)
         if now - reported_at >= 60:

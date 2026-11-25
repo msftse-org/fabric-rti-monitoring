@@ -11,8 +11,8 @@ export { buildOnCall, describe, formatMonitorValue, historyOf, pageIdFor, ruleMe
 export type { BuildOptions, OnCallInput } from './engine.ts';
 export { createRuleStore, DISPLAY_UNIT, draftToMonitor, emptyDraft, FIRST_RULE_ID, fromDisplay, monitorToDraft, nextRuleId, parseRecipients, RULE_WINDOWS, SERVICES, SIGNAL_UNIT, toDisplay, validateDraft } from './rules.ts';
 export type { DraftErrors, RuleDraft, RuleStore } from './rules.ts';
-export { activatorSourceKql, createCommand, reflexDefinition } from './activator.ts';
-export type { ExportedRule, ExportOptions, FabricTarget, ReflexExport } from './activator.ts';
+export { activatorSourceKql, createCommand, ISSUE_ALERTS_KQL, issueAlertsDefinition, reflexDefinition } from './activator.ts';
+export type { ExportedRule, ExportOptions, FabricTarget, IssueAlertActions, ReflexExport } from './activator.ts';
 export type { AlertRequest, AlertResponse } from './live.ts';
 export { applyActions, createActionStore, createClock, nextManualPageId } from './actions.ts';
 export type { ActionStore } from './actions.ts';

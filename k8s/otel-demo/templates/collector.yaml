@@ -34,6 +34,14 @@ metadata:
     app.kubernetes.io/component: collector
 spec:
   replicas: 1
+  # One pod owns the on-disk queue at a time; a ReadWriteOnce disk cannot be shared.
+  # maxSurge 0 stops the old pod before the new one starts. (Switching an installed
+  # Deployment to type Recreate fails under server-side apply, so this stays RollingUpdate.)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: otel-collector
@@ -98,6 +106,8 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            - name: queue
+              mountPath: /var/lib/otelcol/queue
       volumes:
         - name: config
           configMap:
@@ -105,3 +115,29 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 64Mi
+        - name: queue
+          {{- if .Values.collector.persistentQueue.enabled }}
+          persistentVolumeClaim:
+            claimName: otel-collector-queue
+          {{- else }}
+          emptyDir:
+            sizeLimit: {{ .Values.collector.persistentQueue.size }}
+          {{- end }}
+{{- if .Values.collector.persistentQueue.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: otel-collector-queue
+  labels:
+    {{- include "otel-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/name: otel-collector
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- with .Values.collector.persistentQueue.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.collector.persistentQueue.size }}
+{{- end }}

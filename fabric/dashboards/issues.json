@@ -1,0 +1,682 @@
+{
+  "schema_version": 75,
+  "title": "Fabric RTI Issues",
+  "autoRefresh": {
+    "enabled": true,
+    "defaultInterval": "1m",
+    "minInterval": "30s"
+  },
+  "tiles": [
+    {
+      "id": "1aee5c1f-b026-555f-94ee-1ecc8fa493ce",
+      "title": "Active issues",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 0,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Distinct issues active in the range.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "d082ac8a-19d3-5419-a379-117ac0ed2058"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Issues",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "39c4dae7-7c49-56ed-b423-da7b42c6f95d",
+      "title": "Unresolved",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 4,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Open or muted issues.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "0b73f7ce-abed-5072-8b81-21d75556da1e"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Unresolved",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "cc1c4574-f7e7-54a3-8e9b-6ff1044cc442",
+      "title": "New",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 8,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "First seen in the range.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "5c6630fd-a995-542c-b0cc-e6d5cf44714a"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "New",
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "091c7fc8-8150-5c16-944e-765e417052d5",
+            "ruleName": "new",
+            "applyTo": "cells",
+            "visualType": "card",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": null,
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": null,
+                "operator": ">",
+                "values": [
+                  "0"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "1221d14a-eba1-5069-b276-7bae2c85cb6f",
+      "title": "Events",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 12,
+        "y": 0,
+        "width": 4,
+        "height": 4
+      },
+      "visualType": "card",
+      "description": "Failed spans in the range.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "742618dc-be15-5b49-a695-9b8305b3d34a"
+      },
+      "visualOptions": {
+        "multiStat__textSize": "large",
+        "multiStat__valueColumn": "Events",
+        "colorRulesDisabled": true,
+        "colorRules": []
+      }
+    },
+    {
+      "id": "66d55190-3a12-5871-a1db-9dca88f1e966",
+      "title": "Fabric RTI",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 16,
+        "y": 0,
+        "width": 8,
+        "height": 4
+      },
+      "visualType": "markdownCard",
+      "markdownText": "[Metrics]({{url:metrics}}) · [Logs]({{url:logs}}) · [Traces]({{url:traces}}) · **Issues** · [Releases]({{url:releases}}) · [Agents]({{url:agents}})\n\nRight-click a **Fingerprint** → **Cross-filter** to list its occurrences. Resolve or mute with `scripts/issue-state.py`.",
+      "visualOptions": {}
+    },
+    {
+      "id": "2dedf744-e82c-59c2-a5d3-a868d6a36138",
+      "title": "Events by issue",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 0,
+        "y": 4,
+        "width": 24,
+        "height": 8
+      },
+      "visualType": "stackedcolumn",
+      "description": "Hourly events for the ten busiest issues (Issues1h).",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "dcf33d3c-487b-5e68-80ab-3690a730a333"
+      },
+      "visualOptions": {
+        "xColumn": "WindowStart",
+        "yColumns": [
+          "Events"
+        ],
+        "seriesColumns": [
+          "Issue"
+        ],
+        "hideLegend": false,
+        "legendLocation": "bottom",
+        "xColumnTitle": "",
+        "yColumnTitle": "",
+        "crossFilterDisabled": false,
+        "drillthroughDisabled": false,
+        "crossFilter": [],
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "fd99e4fb-7665-5d38-928d-d1faad2f94a8",
+      "title": "Issues",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 0,
+        "y": 12,
+        "width": 24,
+        "height": 10
+      },
+      "visualType": "table",
+      "description": "One row per issue and environment.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "c03f1f87-246e-5140-87d4-b7ff3d7ee979"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "9b802bde-9c33-51b1-ac2c-1ee3960796cd",
+            "ruleName": "Status=open",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Status",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "Status",
+                "operator": "==",
+                "values": [
+                  "open"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "13604fe1-2128-54e4-bc3e-a54f2bfd70df",
+            "ruleName": "Status=muted",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Status",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "Status",
+                "operator": "==",
+                "values": [
+                  "muted"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "a445bc70-2c8a-5a9c-93cc-47cd91dfb580",
+            "ruleName": "Status=resolved",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "Status",
+            "hideText": false,
+            "tag": "",
+            "icon": null,
+            "color": "green",
+            "conditions": [
+              {
+                "column": "Status",
+                "operator": "==",
+                "values": [
+                  "resolved"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": false,
+        "crossFilter": [
+          {
+            "interaction": "column",
+            "property": "Fingerprint",
+            "parameterId": "90af682a-57c2-5a49-9cbb-3b8dcb36956e",
+            "disabled": false
+          }
+        ],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "a9900a89-e148-5f51-8e69-cce0dfce4367",
+      "title": "Issue alerts",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 0,
+        "y": 22,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "table",
+      "description": "new_issue, regression and unmute transitions in the range.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "c2d79750-1fa0-5651-bb5b-f716aa6ca089"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": false,
+        "colorRules": [
+          {
+            "id": "36b949fc-03c4-5ec6-9cbe-7f680ba572ca",
+            "ruleName": "AlertType=regression",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "AlertType",
+            "hideText": false,
+            "tag": "",
+            "icon": "critical",
+            "color": "red",
+            "conditions": [
+              {
+                "column": "AlertType",
+                "operator": "==",
+                "values": [
+                  "regression"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "85440b17-6d9d-5c4b-b4f1-547ffbf419ba",
+            "ruleName": "AlertType=new_issue",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "AlertType",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "AlertType",
+                "operator": "==",
+                "values": [
+                  "new_issue"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "025b5145-1b2f-517a-95ff-2743f04a2e12",
+            "ruleName": "AlertType=unmute",
+            "applyTo": "cells",
+            "visualType": "table",
+            "ruleType": "colorByCondition",
+            "chainingOperator": "and",
+            "colorStyle": "bold",
+            "applyToColumn": "AlertType",
+            "hideText": false,
+            "tag": "",
+            "icon": "warning",
+            "color": "yellow",
+            "conditions": [
+              {
+                "column": "AlertType",
+                "operator": "==",
+                "values": [
+                  "unmute"
+                ]
+              }
+            ]
+          }
+        ],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    },
+    {
+      "id": "7c454333-6fc2-59fb-b27d-e3d2818e1d84",
+      "title": "Occurrences of the selected issue",
+      "pageId": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "layout": {
+        "x": 12,
+        "y": 22,
+        "width": 12,
+        "height": 8
+      },
+      "visualType": "table",
+      "description": "Newest 50 failed spans of the selected issue; paste a TraceID into Traces → Trace ID.",
+      "queryRef": {
+        "kind": "query",
+        "queryId": "6f9263ac-c576-525f-bbf4-e3509dc54df1"
+      },
+      "visualOptions": {
+        "colorRulesDisabled": true,
+        "colorRules": [],
+        "colorStyle": "light",
+        "crossFilterDisabled": true,
+        "crossFilter": [],
+        "drillthroughDisabled": true,
+        "drillthrough": []
+      }
+    }
+  ],
+  "baseQueries": [
+    {
+      "id": "683d4ad7-25ee-5337-8dfc-77b0dbc92e34",
+      "queryId": "ca1bc6d2-7e95-567e-b97c-255c477b7711",
+      "variableName": "_issue_kpis"
+    }
+  ],
+  "parameters": [
+    {
+      "kind": "duration",
+      "id": "824cda8c-a6aa-5b67-adb7-33acb0fc98c4",
+      "displayName": "Time range",
+      "description": "",
+      "beginVariableName": "_startTime",
+      "endVariableName": "_endTime",
+      "defaultValue": {
+        "kind": "dynamic",
+        "count": 1,
+        "unit": "hours"
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "8b628be6-2166-5ef6-acfb-378d331f85b5",
+      "displayName": "Environment",
+      "description": "Deployment environment reported by the OpenTelemetry resource.",
+      "variableName": "_environment",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "0ff484bc-a3ba-5014-a03a-a6d02f469c23"
+        },
+        "columns": {
+          "value": "Environment"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "5654d31a-b681-5757-b457-f630a5da8f0c",
+      "displayName": "Service",
+      "description": "Microservice (service.name).",
+      "variableName": "_service",
+      "selectionType": "array",
+      "includeAllOption": true,
+      "allIsNull": true,
+      "defaultValue": {
+        "kind": "all"
+      },
+      "dataSource": {
+        "kind": "static",
+        "values": [
+          {
+            "value": "gateway"
+          },
+          {
+            "value": "checkout"
+          },
+          {
+            "value": "inventory"
+          },
+          {
+            "value": "payment"
+          },
+          {
+            "value": "shipping"
+          },
+          {
+            "value": "notifications"
+          },
+          {
+            "value": "assistant"
+          }
+        ]
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    },
+    {
+      "kind": "string",
+      "id": "90af682a-57c2-5a49-9cbb-3b8dcb36956e",
+      "displayName": "Issue",
+      "description": "Issue whose occurrences are listed. Right-click a Fingerprint in Issues → Cross-filter.",
+      "variableName": "_issue",
+      "selectionType": "scalar",
+      "includeAllOption": false,
+      "defaultValue": {
+        "kind": "query-result"
+      },
+      "dataSource": {
+        "kind": "query",
+        "queryRef": {
+          "kind": "query",
+          "queryId": "f1ad4c79-5b41-58ed-91b8-5cb076561770"
+        },
+        "columns": {
+          "value": "Fingerprint",
+          "label": "Label"
+        },
+        "autoReset": true
+      },
+      "showOnPages": {
+        "kind": "all"
+      }
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1",
+      "kind": "kusto-trident",
+      "name": "observability",
+      "clusterUri": "https://<eventhouse>.kusto.fabric.microsoft.com",
+      "databaseArtifactId": "00000000-0000-0000-0000-000000000000",
+      "database": "00000000-0000-0000-0000-000000000000",
+      "workspace": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "pages": [
+    {
+      "id": "83d76db4-002b-5d9c-bed8-064a023b7316",
+      "name": "Issues"
+    }
+  ],
+  "queries": [
+    {
+      "id": "0ff484bc-a3ba-5014-a03a-a6d02f469c23",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "OTELTraces\n| where StartTime between (_startTime .. _endTime)\n| where ResourceAttributes[\"demo.synthetic\"] == true\n| distinct Environment=tostring(ResourceAttributes[\"deployment.environment.name\"])\n| order by Environment asc",
+      "usedVariables": [
+        "_endTime",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "ca1bc6d2-7e95-567e-b97c-255c477b7711",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "Issues(now() - _startTime)\n| where LastSeen between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Issues=dcount(Fingerprint), Unresolved=dcountif(Fingerprint, Status != \"resolved\"),\n    New=dcountif(Fingerprint, FirstSeen >= _startTime), Events=sum(Events)",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "f1ad4c79-5b41-58ed-91b8-5cb076561770",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "Issues(now() - _startTime)\n| where LastSeen between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Events=sum(Events) by Fingerprint, Title\n| top 200 by Events desc\n| project Fingerprint, Label=strcat(Title, \" · \", Events, \" events\")",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "d082ac8a-19d3-5419-a379-117ac0ed2058",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_issue_kpis\n| project Issues",
+      "usedVariables": [
+        "_issue_kpis"
+      ]
+    },
+    {
+      "id": "0b73f7ce-abed-5072-8b81-21d75556da1e",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_issue_kpis\n| project Unresolved",
+      "usedVariables": [
+        "_issue_kpis"
+      ]
+    },
+    {
+      "id": "5c6630fd-a995-542c-b0cc-e6d5cf44714a",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_issue_kpis\n| project New",
+      "usedVariables": [
+        "_issue_kpis"
+      ]
+    },
+    {
+      "id": "742618dc-be15-5b49-a695-9b8305b3d34a",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "_issue_kpis\n| project Events",
+      "usedVariables": [
+        "_issue_kpis"
+      ]
+    },
+    {
+      "id": "dcf33d3c-487b-5e68-80ab-3690a730a333",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "let top_issues = Issues1h\n| where WindowStart between (bin(_startTime, 1h) .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| summarize Events=sum(EventCount) by Fingerprint\n| top 10 by Events;\nIssues1h\n| where WindowStart between (bin(_startTime, 1h) .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| where Fingerprint in ((top_issues | project Fingerprint))\n| summarize Events=sum(EventCount) by WindowStart, Issue=strcat(ExceptionType, \": \", Message)\n| order by WindowStart asc",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "c03f1f87-246e-5140-87d4-b7ff3d7ee979",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "Issues(now() - _startTime)\n| where LastSeen between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| project Status, Title, Culprit, Environment, Events, FirstSeen, LastSeen, IntroducedIn,\n    Versions=strcat_array(Versions, \", \"), Fingerprint, ExampleTraceID\n| order by Events desc\n| take 200",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "c2d79750-1fa0-5651-bb5b-f716aa6ca089",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "IssueAlerts(now() - _startTime)\n| where LastEvent between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| project AlertType, Title, Service, Environment, Events, FirstEvent, LastEvent, Fingerprint, ExampleTraceID\n| take 200",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_service",
+        "_startTime"
+      ]
+    },
+    {
+      "id": "6f9263ac-c576-525f-bbf4-e3509dc54df1",
+      "dataSource": {
+        "kind": "inline",
+        "dataSourceId": "4a400d92-1a3d-56cd-b113-9a7b41dea4f1"
+      },
+      "text": "ErrorEvents(now() - _startTime)\n| where Timestamp between (_startTime .. _endTime)\n| where (isempty(_environment) or Environment in (_environment))\n| where (isempty(_service) or Service in (_service))\n| where Fingerprint == _issue\n| top 50 by Timestamp desc\n| project Timestamp, Service, Version, SpanName, Title=strcat(ExceptionType, \": \", Message), TraceID",
+      "usedVariables": [
+        "_endTime",
+        "_environment",
+        "_issue",
+        "_service",
+        "_startTime"
+      ]
+    }
+  ],
+  "embeddedApps": []
+}

@@ -74,6 +74,23 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(root["status"]["code"], 2)
         self.assertEqual(log["severityNumber"], 17)
 
+    def test_failing_spans_carry_one_exception_event_and_successful_spans_none(self):
+        def events(index):
+            payloads = emit.make_payloads(index)
+            return [s.get("events") for r in payloads["traces"]["resourceSpans"]
+                    for s in r["scopeSpans"][0]["spans"]]
+
+        self.assertEqual(events(0), [None] * 4)
+        failing = events(4)
+        self.assertTrue(all(len(e) == 1 and e[0]["name"] == "exception" for e in failing))
+        types = [{a["key"]: a["value"]["stringValue"] for a in e[0]["attributes"]}["exception.type"] for e in failing]
+        self.assertEqual(types, ["DownstreamServiceError", "DownstreamServiceError",
+                                 "PaymentProcessingError", "QueryCanceledError"])
+        # Messages differ per request, so grouping must normalize them; counts are unchanged.
+        self.assertNotEqual(events(4)[3][0]["attributes"], events(9)[3][0]["attributes"])
+        self.assertEqual(sum(len(r["scopeSpans"][0]["spans"])
+                             for r in emit.make_payloads(4)["traces"]["resourceSpans"]), 4)
+
     def test_metrics_use_scalar_gauge_and_delta_sum_without_trace_id_dimensions(self):
         payload = emit.make_payloads(0)["metrics"]
         metrics = payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]
@@ -146,10 +163,11 @@ class ServingAssetTests(unittest.TestCase):
     def test_materialized_views_have_no_trace_identifiers_as_dimensions(self):
         schema = (ROOT / "fabric" / "schema.kql").read_text()
         views = re.findall(r"materialized-view (\w+) on table (\w+)\s*\{(.*?)\n\}", schema, re.S)
-        self.assertEqual(len(views), 3)
         self.assertEqual({v[1] for v in views}, {"OTELLogs", "OTELTraces", "OTELMetrics"})
         for name, source, query in views:
-            self.assertNotRegex(query, r"TraceID|SpanID|ParentID|demo\.run_id|ago\(|now\(")
+            # Trace IDs may be sampled as an aggregate example, never used as a dimension.
+            self.assertNotRegex(query.rsplit(" by ", 1)[1], r"TraceID|SpanID|ParentID|demo\.run_id")
+            self.assertNotRegex(query, r"demo\.run_id|ago\(|now\(")
             self.assertEqual(query.count("| summarize"), 1)
             self.assertTrue(query.rsplit("|", 1)[1].lstrip().startswith("summarize"))
             self.assertIn(f".alter materialized-view {name} policy caching hot = 1d", schema)
@@ -165,7 +183,7 @@ class ServingAssetTests(unittest.TestCase):
         dashboards = self.dashboards()
         self.assertEqual(sorted(path.name for path in (ROOT / "grafana").glob("*.json")
                                 if "panels" in json.loads(path.read_text())),
-                         ["logs.json", "metrics.json", "traces.json"])
+                         ["agents.json", "issues.json", "logs.json", "metrics.json", "releases.json", "traces.json"])
         for name, dashboard in dashboards.items():
             self.assertEqual(dashboard["uid"], f"fabric-rti-{name}")
             self.assertIn("fabric-rti", dashboard["tags"])
@@ -207,6 +225,48 @@ class ServingAssetTests(unittest.TestCase):
         self.assertEqual(used_functions, {"LogsOverview", "RequestsOverview", "MetricDurationOverview"})
         for name in used_functions:
             self.assertRegex(schema, rf"function with .*?\b{name}\(")
+
+    def test_issue_release_and_agent_dashboards_follow_the_shared_rules(self):
+        for name in ("issues", "releases", "agents"):
+            dashboard = json.loads((ROOT / "grafana" / f"{name}.json").read_text())
+            with self.subTest(dashboard=name):
+                self.assertEqual(dashboard["uid"], f"fabric-rti-{name}")
+                self.assertEqual(dashboard["tags"], ["fabric-rti", name])
+                self.assertEqual(dashboard["links"][0]["tags"], ["fabric-rti"])
+                self.assertEqual([item["name"] for item in dashboard["__inputs"]], ["DS_FABRIC"])
+                service = next(v for v in dashboard["templating"]["list"] if v["name"] == "service")
+                self.assertIn("assistant", [option["value"] for option in service["options"]])
+                for panel, target in self.targets(dashboard):
+                    query = target["query"]
+                    single_item = "AgentRun(selected_trace)" in query
+                    with self.subTest(panel=panel["title"]):
+                        self.assertEqual(target["queryType"], "KQL")
+                        if not single_item:
+                            # Every panel honours the dashboard's environment and service filters.
+                            self.assertIn("${environment:singlequote}", query)
+                            self.assertIn("${service:singlequote}", query)
+                        self.assertNotRegex(query, r"\$__timeFilter\(now\(\)\)")
+                        if target["resultFormat"] == "time_series":
+                            self.assertIn("| order by WindowStart asc", query)
+                            self.assertRegex(query, r'Series=strcat\(Environment, " / ')
+                        if target["resultFormat"] == "table" and panel["type"] == "table":
+                            limits = [int(n) for n in re.findall(r"\| (?:take|top) (\d+)", query)]
+                            self.assertTrue(limits and max(limits) <= 200, "tables must be bounded")
+                        if "Issues1h" in query:
+                            # Hourly bins: include the bin that holds the start of the range.
+                            self.assertIn("bin($__timeFrom, 1h)", query)
+
+    def test_latency_is_coloured_green_under_1s_amber_under_3s_red_beyond(self):
+        expected = [{"color": "green", "value": None}, {"color": "orange", "value": 1000}, {"color": "red", "value": 3000}]
+        metrics = self.dashboards()["metrics"]
+        latency_series = [p for p in metrics["panels"] if p["type"] == "timeseries" and p["fieldConfig"]["defaults"].get("unit") == "ms"]
+        self.assertTrue(latency_series)
+        for panel in latency_series:
+            self.assertEqual(panel["fieldConfig"]["defaults"]["thresholds"]["steps"], expected)
+        health = next(p for p in metrics["panels"] if p["title"] == "Service health")
+        p95 = next(o for o in health["fieldConfig"]["overrides"] if o["matcher"]["options"] == "P95Ms")
+        self.assertEqual(next(x["value"] for x in p95["properties"] if x["id"] == "thresholds")["steps"], expected)
+        self.assertTrue(any(p["title"] == "Telemetry volume" for p in metrics["panels"]))
 
     def test_traces_dashboard_has_waterfall_and_service_map(self):
         dashboard = self.dashboards()["traces"]
@@ -307,7 +367,7 @@ class RealTimeDashboardTests(unittest.TestCase):
     def setUpClass(cls):
         cls.dashboards = {
             subject: json.loads((ROOT / "fabric" / "dashboards" / f"{subject}.json").read_text())
-            for subject in ("metrics", "logs", "traces")
+            for subject in ("metrics", "logs", "traces", "issues", "releases", "agents")
         }
 
     def queries_for(self, dashboard):
@@ -318,12 +378,16 @@ class RealTimeDashboardTests(unittest.TestCase):
         return [(tile, queries[tile["queryRef"]["queryId"]]["text"])
                 for tile in dashboard["tiles"] if "queryRef" in tile]
 
-    def test_three_single_page_dashboards_have_matching_titles_and_refresh(self):
+    def test_six_single_page_dashboards_have_matching_titles_and_refresh(self):
         expected = {
             "metrics": ("Fabric RTI Metrics", "Metrics", "30s"),
             "logs": ("Fabric RTI Logs", "Logs", "30s"),
             "traces": ("Fabric RTI Traces", "Traces", "1m"),
+            "issues": ("Fabric RTI Issues", "Issues", "1m"),
+            "releases": ("Fabric RTI Releases", "Releases", "1m"),
+            "agents": ("Fabric RTI Agents", "Agents", "1m"),
         }
+        self.assertEqual(sorted(path.stem for path in (ROOT / "fabric" / "dashboards").glob("*.json")), sorted(expected))
         for subject, (title, page, refresh) in expected.items():
             with self.subTest(subject=subject):
                 dashboard = self.dashboards[subject]
@@ -386,9 +450,10 @@ class RealTimeDashboardTests(unittest.TestCase):
                         continue
                     if "selected_trace" in text:
                         self.assertIn("let selected_trace", text)
-                        self.assertIn("TraceID == selected_trace", text)
+                        self.assertRegex(text, r"TraceID == selected_trace|AgentRun\(selected_trace\)")
                         continue
-                    self.assertRegex(text, r"between \(_startTime \.\. _endTime\)")
+                    # Functions with a lookback are scoped by the range start (now() - _startTime).
+                    self.assertRegex(text, r"between \(_startTime \.\. _endTime\)|between \(bin\(_startTime, 1h\) \.\. _endTime\)|\(now\(\) - _startTime\)")
                     self.assertIn("isempty(_environment) or", text)
                     if tile["title"] != "Gateway latency (ms) · RequestsOverview":
                         self.assertIn("isempty(_service) or", text)
@@ -435,6 +500,25 @@ class RealTimeDashboardTests(unittest.TestCase):
         # Rows sharing a label would collapse into one category.
         self.assertIn("row_number(1, Label != prev(Label))", query_text("Trace waterfall"))
         self.assertIn("Logs=coalesce(Logs, 0)", query_text("Spans in this trace"))
+
+    def test_new_dashboards_use_shared_latency_scale_and_cross_filter_pickers(self):
+        def rules(dashboard):
+            return [rule for tile in dashboard["tiles"] for rule in tile.get("visualOptions", {}).get("colorRules", [])]
+
+        for subject in ("releases", "agents", "metrics"):
+            thresholds = {(c["operator"], c["values"][0]) for rule in rules(self.dashboards[subject])
+                          if rule["ruleName"] in ("fast", "slow", "very slow") for c in rule["conditions"]}
+            with self.subTest(subject=subject):
+                self.assertEqual(thresholds, {("<", "1000"), (">=", "1000"), ("<", "3000"), (">=", "3000")})
+        for subject, variable, column in (("issues", "_issue", "Fingerprint"), ("agents", "_run", "TraceID")):
+            dashboard = self.dashboards[subject]
+            picker = next(p for p in dashboard["parameters"] if p.get("variableName") == variable)
+            self.assertEqual(picker["defaultValue"], {"kind": "query-result"})
+            links = [(link["property"], link["parameterId"]) for tile in dashboard["tiles"]
+                     for link in tile.get("visualOptions", {}).get("crossFilter", [])]
+            self.assertIn((column, picker["id"]), links)
+        services = next(p for p in self.dashboards["logs"]["parameters"] if p.get("variableName") == "_service")
+        self.assertIn("assistant", [v["value"] for v in services["dataSource"]["values"]])
 
     def test_cross_dashboard_navigation_and_trace_id_handoff(self):
         traces = self.dashboards["traces"]
