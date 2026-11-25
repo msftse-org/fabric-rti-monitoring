@@ -1,8 +1,9 @@
-import { Activity, Bell, BellOff, Check, ChevronRight, Clock3, ExternalLink, Mail, MessageSquare, Plus, Radio, Save, Trash2, TriangleAlert, X } from 'lucide-react';
+import { Activity, Bell, BellOff, Check, ChevronRight, ExternalLink, Mail, MessageSquare, Moon, Plus, Radio, Save, Trash2, TriangleAlert, UserRound, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type { AlertDefinition, AlertDestination, AlertEvaluation, AlertSignal, AlertSeverity, DestinationKind } from '../lib/alerts';
 import { ALERT_STORAGE_KEY } from '../lib/alerts';
 import { evaluateAlert, formatAlertValue, readAlertDefinitions, SIGNALS } from '../lib/alerts';
+import { applyIncidentAction, INCIDENT_STORAGE_KEY, readIncidentState, reconcileIncidents, type AlertIncident, type IncidentAction, type IncidentState } from '../lib/incidents';
 import { useData } from '../lib/data';
 import { useToast } from '../lib/toast';
 
@@ -316,44 +317,126 @@ export function AlertIncidents() {
   const { bundle, derived } = useData();
   const [rules] = useState(() => readAlertDefinitions(derived.services));
   const evaluations = useMemo(() => rules.map((rule) => evaluateAlert(rule, derived.services, bundle.logs, bundle.traces)), [rules, derived.services, bundle.logs, bundle.traces]);
-  const triggered = evaluations.filter((evaluation) => evaluation.rule.enabled && evaluation.triggered);
-  const recovered = evaluations.filter((evaluation) => evaluation.rule.enabled && !evaluation.triggered);
+  const activeEvaluations = useMemo(() => evaluations.map((evaluation) => ({
+    ...evaluation,
+    triggered: evaluation.rule.enabled && evaluation.triggered,
+  })), [evaluations]);
+  const [stored, setStored] = useState<IncidentState>(() => readIncidentState());
+  const [storageError, setStorageError] = useState('');
+  const state = useMemo(() => reconcileIncidents(stored, activeEvaluations, Date.now()), [stored, activeEvaluations]);
+  const [filter, setFilter] = useState<'all' | 'active' | 'resolved'>('all');
+
+  useEffect(() => {
+    if (JSON.stringify(state) !== JSON.stringify(stored)) setStored(state);
+    try {
+      window.localStorage.setItem(INCIDENT_STORAGE_KEY, JSON.stringify(state));
+      setStorageError('');
+    } catch {
+      setStorageError('This browser blocked local storage. Incident actions may not survive a reload.');
+    }
+  }, [state, stored]);
+
+  const act = (incidentId: string, action: IncidentAction) => {
+    setStored((current) => applyIncidentAction(current, incidentId, action));
+  };
+  const active = state.incidents.filter((incident) => incident.status !== 'resolved');
+  const acknowledged = active.filter((incident) => incident.status === 'acknowledged').length;
+  const resolved = state.incidents.length - active.length;
+  const visible = state.incidents.filter((incident) => filter === 'all' || filter === 'active' && incident.status !== 'resolved' || filter === 'resolved' && incident.status === 'resolved');
+
   return (
     <div className="page alert-page">
       <header className="alert-page-head">
         <div>
           <div className="alert-breadcrumb">Alerts <ChevronRight size={13} aria-hidden /> Incidents</div>
           <h1>Incidents</h1>
-          <p>Current alert conditions derived from the telemetry window.</p>
+          <p>Alert-generated incidents from the current telemetry evaluation.</p>
         </div>
         <a className="btn" href="#/alerts/definitions"><Bell size={14} /> Alert definitions <ExternalLink size={12} /></a>
       </header>
-      <div className="alert-demo-note" role="note"><Activity size={15} aria-hidden /><span>Incident state is simulated from the current telemetry window. A triggered alert does not send an external notification.</span></div>
+      <div className="alert-demo-note" role="note">
+        <Activity size={15} aria-hidden />
+        <span><strong>Coralogix-style alert incidents.</strong> Incidents are created from triggered alert conditions, not declared manually. Recovery resolves an incident; a later trigger creates a new one. State and response actions are simulated in this browser only.</span>
+      </div>
+      {storageError && <p className="alert-form-error" role="alert">{storageError}</p>}
       <div className="alert-summary">
-        <div className={triggered.length ? 'is-triggered' : ''}><strong>{triggered.length}</strong><span>Triggered</span></div>
-        <div><strong>{recovered.length}</strong><span>Not triggered</span></div>
-        <div><strong>{rules.filter((rule) => rule.enabled).length}</strong><span>Enabled rules</span></div>
+        <div className={active.length ? 'is-triggered' : ''}><strong>{active.length}</strong><span>Open</span></div>
+        <div><strong>{acknowledged}</strong><span>Acknowledged</span></div>
+        <div><strong>{resolved}</strong><span>Resolved</span></div>
       </div>
       <section className="alert-incident-section">
-        <div className="alert-list-head"><div><h2>Triggered conditions</h2><span>Evaluated against this window</span></div><span className="alert-snapshot-time"><Clock3 size={13} /> {new Date(bundle.generatedAt).toLocaleString()}</span></div>
-        {triggered.length ? (
+        <div className="alert-list-head">
+          <div><h2>Alert incidents</h2><span>{visible.length} shown · evaluated {new Date(bundle.generatedAt).toLocaleString()}</span></div>
+          <div className="alert-filter" role="group" aria-label="Filter incidents">
+            {(['all', 'active', 'resolved'] as const).map((value) => <button key={value} type="button" className={filter === value ? 'is-active' : ''} onClick={() => setFilter(value)}>{value[0].toUpperCase() + value.slice(1)}</button>)}
+          </div>
+        </div>
+        {visible.length ? (
           <div className="alert-rule-list">
-            {triggered.map(({ rule, value }) => (
-              <article className="alert-rule alert-incident" key={rule.id}>
-                <span className="alert-rule-mark is-triggered"><TriangleAlert size={16} aria-hidden /></span>
-                <div className="alert-rule-copy">
-                  <div className="alert-rule-title"><h3>{rule.name}</h3><span className={`alert-severity alert-severity--${rule.severity}`}>{rule.severity}</span><span className="alert-state is-triggered">Triggered</span></div>
-                  <p>{SIGNALS[rule.signal].label} for <strong>{rule.service}</strong> measured <strong>{formatAlertValue(rule.signal, value)}</strong>, crossing {valueForThreshold(rule)}.</p>
-                  <Destinations destinations={rule.destinations} />
-                  <span className="alert-simulation-caption"><Check size={12} /> Simulated notification route; no external delivery</span>
-                </div>
-              </article>
-            ))}
+            {visible.map((incident) => <AlertIncidentRow key={incident.id} incident={incident} onAction={act} />)}
           </div>
         ) : (
-          <div className="alert-empty"><Check size={22} /><strong>No active incidents</strong><span>Enabled definitions are below their thresholds in the current telemetry window.</span><a className="link-btn" href="#/alerts/definitions">Review alert definitions <ChevronRight size={13} /></a></div>
+          <div className="alert-empty">
+            <Check size={22} />
+            <strong>{filter === 'resolved' ? 'No resolved incidents yet' : filter === 'active' ? 'No open incidents' : 'No incidents yet'}</strong>
+            <span>{filter === 'resolved' ? 'Incidents appear here after an alert condition recovers or is resolved.' : 'An enabled alert condition must cross its threshold to create an incident.'}</span>
+            <a className="link-btn" href="#/alerts/definitions">Review alert definitions <ChevronRight size={13} /></a>
+          </div>
         )}
       </section>
+      <p className="alert-workspace-footnote">Evaluation uses the current {bundle.source === 'snapshot' ? 'snapshot' : 'live preview'} window, not a continuous Coralogix alerting service. No vendor API or notification endpoint is called.</p>
     </div>
+  );
+}
+
+function AlertIncidentRow({ incident, onAction }: { incident: AlertIncident; onAction: (id: string, action: IncidentAction) => void }) {
+  const isOpen = incident.status !== 'resolved';
+  const isSnoozed = isOpen && incident.snoozedUntil !== null && incident.snoozedUntil > Date.now();
+  const actionTime = () => Date.now();
+  const statusLabel = incident.status[0].toUpperCase() + incident.status.slice(1);
+  const eventLabel = (event: AlertIncident['events'][number]) => {
+    switch (event.kind) {
+      case 'triggered': return 'Alert condition triggered';
+      case 'acknowledged': return `Acknowledged by ${event.by ?? 'Current user'}`;
+      case 'assigned': return `Assigned to ${event.by ?? 'Current user'}`;
+      case 'snoozed': return `Snoozed by ${event.by ?? 'Current user'}${event.until ? ` until ${new Date(event.until).toLocaleString()}` : ''}`;
+      case 'resolved': return event.by ? `Resolved by ${event.by}` : 'Resolved automatically when the alert condition recovered';
+    }
+  };
+  return (
+    <article className="alert-rule alert-incident alert-incident-record">
+      <div className="alert-rule-main">
+        <span className={`alert-rule-mark${isOpen ? ' is-triggered' : ''}`}><TriangleAlert size={16} aria-hidden /></span>
+        <div className="alert-rule-copy">
+          <div className="alert-rule-title">
+            <h3>{incident.alertName}</h3>
+            <span className={`alert-severity alert-severity--${incident.severity}`}>{incident.severity}</span>
+            <span className={`alert-state${isOpen ? ' is-triggered' : ''}`}>{statusLabel}</span>
+          </div>
+          <p>{SIGNALS[incident.signal].label} for <strong>{incident.service}</strong> measured <strong>{formatAlertValue(incident.signal, incident.value)}</strong>, crossing {incident.comparison === 'above' ? '>' : '<'} {incident.threshold}{incident.signal === 'error_rate' ? '%' : ` ${SIGNALS[incident.signal].unit}`}.</p>
+          <p className="alert-incident-meta">
+            <span>Incident <code>{incident.id.slice(-8)}</code></span>
+            <span>Triggered {new Date(incident.triggeredAt).toLocaleString()}</span>
+            <span><UserRound size={12} aria-hidden /> {incident.assignedTo ? `Assigned to ${incident.assignedTo}` : 'Unassigned'}</span>
+            {isSnoozed && <span><Moon size={12} aria-hidden /> Snoozed until {new Date(incident.snoozedUntil!).toLocaleString()}</span>}
+          </p>
+          <details className="alert-incident-history">
+            <summary>History ({incident.events.length} events)</summary>
+            <ol>
+              {incident.events.map((event) => <li key={`${event.kind}-${event.at}`}><time dateTime={new Date(event.at).toISOString()}>{new Date(event.at).toLocaleString()}</time><span>{eventLabel(event)}</span></li>)}
+            </ol>
+          </details>
+        </div>
+      </div>
+      {isOpen && (
+        <div className="alert-rule-actions">
+          {incident.status === 'triggered' && <button type="button" className="btn btn--small" onClick={() => onAction(incident.id, { kind: 'acknowledge', by: 'Current user', at: actionTime() })}><Check size={13} /> Acknowledge</button>}
+          {incident.assignedTo !== 'Current user' && <button type="button" className="btn btn--small" onClick={() => onAction(incident.id, { kind: 'assign', by: 'Current user', at: actionTime() })}><UserRound size={13} /> Assign to me</button>}
+          <button type="button" className="btn btn--small" onClick={() => onAction(incident.id, { kind: 'snooze', by: 'Current user', at: actionTime(), until: actionTime() + 30 * 60_000 })}><Moon size={13} /> Snooze 30m</button>
+          <button type="button" className="btn btn--small" onClick={() => onAction(incident.id, { kind: 'resolve', by: 'Current user', at: actionTime() })}><Check size={13} /> Resolve</button>
+        </div>
+      )}
+      {!isOpen && incident.resolvedBy === 'alert' && <span className="alert-simulation-caption"><Check size={12} /> Condition recovered; resolved automatically</span>}
+    </article>
   );
 }

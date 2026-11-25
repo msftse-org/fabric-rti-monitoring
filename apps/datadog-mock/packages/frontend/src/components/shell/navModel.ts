@@ -116,6 +116,7 @@ export const NAV_GROUPS: NavGroup[] = [
           { label: 'Summary', path: paths.oncall(), active: (r) => r.name === 'oncall' },
           { label: 'Teams', path: paths.oncallTeams(), active: (r) => r.name === 'oncall-teams' || r.name === 'oncall-team' },
           { label: 'Pages', path: paths.oncallPages(), active: (r) => r.name === 'oncall-pages' },
+          { label: 'Incidents', path: paths.oncallIncidents(), active: (r) => r.name === 'oncall-incidents' },
           { label: 'Schedules', path: paths.oncallSchedules(), active: (r) => r.name === 'oncall-schedules' || r.name === 'oncall-schedule' },
           { label: 'Escalation Policies', path: paths.oncallPolicies(), active: (r) => r.name === 'oncall-policies' || r.name === 'oncall-policy' },
           { label: 'Analytics', path: paths.oncallAnalytics(), active: (r) => r.name === 'oncall-analytics' },

@@ -1,6 +1,5 @@
-import { useState } from 'react';
 import { Calendar, Check, ChevronDown, Globe, GitBranch, Menu, RefreshCw } from 'lucide-react';
-import { formatClock } from '@telemetry';
+import { TelemetryStatus } from '@telemetry';
 import { TIME_OPTIONS, timeLabel, useData } from '../lib/data';
 import { useToast } from '../lib/toast';
 import { Popover } from './Popover';
@@ -71,17 +70,7 @@ function TimePicker() {
 
 function DataIndicator() {
   const { telemetry } = useData();
-  if (!telemetry.bundle) return null;
-  const generated = `${formatClock(telemetry.bundle.generatedAt, false)} UTC`;
-  if (telemetry.mode === 'live') {
-    return <span className="live" title="Polling the loopback telemetry API every 15 seconds"><i aria-hidden="true" />LIVE</span>;
-  }
-  return (
-    <span className="live live--snapshot" title={telemetry.fellBack ? 'Live API not reachable; showing the bundled snapshot' : 'Bundled snapshot of real AKS telemetry'}>
-      <i aria-hidden="true" />
-      <span>Snapshot · generated {generated}</span>
-    </span>
-  );
+  return <TelemetryStatus telemetry={telemetry} />;
 }
 
 interface TopBarProps {
@@ -93,14 +82,7 @@ interface TopBarProps {
 export function TopBar({ title, showCreateMonitor, onOpenMenu }: TopBarProps) {
   const toast = useToast();
   const { telemetry, view } = useData();
-  const [spinning, setSpinning] = useState(false);
   const env = view?.bundle.environment;
-
-  const refresh = () => {
-    setSpinning(true);
-    telemetry.refresh();
-    window.setTimeout(() => setSpinning(false), 700);
-  };
 
   return (
     <header className="topbar">
@@ -114,7 +96,7 @@ export function TopBar({ title, showCreateMonitor, onOpenMenu }: TopBarProps) {
         {env && <ScopeChip icon="environment" label="Environments" value={env.environment} />}
         <TimePicker />
         <DataIndicator />
-        <button type="button" className={`icon-btn${spinning ? ' icon-btn--spin' : ''}`} onClick={refresh} aria-label="Refresh data" title="Refresh">
+        <button type="button" className="icon-btn" disabled={telemetry.loading} onClick={telemetry.refresh} aria-label="Refresh data" title="Refresh">
           <RefreshCw size={15} aria-hidden="true" />
         </button>
         {showCreateMonitor && (

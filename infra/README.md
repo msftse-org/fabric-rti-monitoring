@@ -7,6 +7,10 @@ Fabric bootstrap. Terraform also provides a
 [AKS workload demo](../docs/aks-demo.md), which has no Bicep equivalent. Do not
 use both tools to manage the same resources.
 
+Optional browser RUM is provisioned separately with
+[`optional/rum.bicep`](optional/rum.bicep); see the
+[RUM guide](../docs/rum.md) for costs, SAS boundaries, and the Fabric connection.
+
 ## Bicep path
 
 `main.bicep` targets an existing resource group. All three billable resource

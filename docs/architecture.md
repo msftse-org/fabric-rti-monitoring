@@ -1,11 +1,27 @@
 # Architecture and data flow
 
 The sample separates collecting telemetry, storing and summarizing it, and
-presenting it. Each boundary has a small interface: OTLP/HTTP into the collector,
-the Azure Data Explorer exporter into Eventhouse, and KQL query results into
-Grafana.
+presenting it. The baseline uses OTLP/HTTP into the collector, the Azure Data
+Explorer exporter into Eventhouse, and KQL query results into Grafana. Optional
+browser RUM uses Microsoft-managed ingestion instead of that collector.
 
-![Container Apps and optional AKS collectors exporting to Fabric raw tables, materialized views, and KQL functions. A Consume panel groups dashboards and apps, exploration, alerting, and AI agents that use MCP servers, Agent Skills, and the Fabric data agent.](assets/architecture-azure.png)
+![Baseline: Container Apps and optional AKS collectors export to Fabric raw tables, materialized views, and KQL functions. The optional browser RUM path is shown separately below.](assets/architecture-azure.png)
+
+### Optional browser RUM
+
+```mermaid
+flowchart LR
+  browser["Web app<br/>Application Insights JS SDK"] -->|"HTTPS"| ai["Application Insights<br/>managed intake"]
+  ai -->|"Diagnostic export"| hub["Azure Event Hubs<br/>dedicated namespace"]
+  ai -.-> la["Log Analytics workspace"]
+  hub -->|"Native data connection"| eventhouse["Fabric Eventhouse<br/>RUMEnvelopes + RUMEvents"]
+  eventhouse --> consumers["KQL / dashboards"]
+```
+
+The browser sends to Application Insights, not to the OTLP collector, Event Hubs,
+or Eventhouse. Eventstream is not required. The
+[RUM deployment guide](rum.md) covers the separate SAS requirements, privacy,
+retention, costs, and the Eventhouse connection.
 
 ## Components
 
@@ -20,6 +36,9 @@ Grafana.
 | Managed Grafana | Queries the Fabric query endpoint using its own read-only identity. |
 | Other consumers | Power BI, notebooks, Activator, MCP servers, Agent Skills, and the Fabric data agent read the same KQL database. See [Consume the telemetry](consume.md). |
 | Log Analytics | Stores Container Apps platform and collector console diagnostics so the telemetry pipeline can itself be investigated. Application OTLP records go to Fabric. |
+| Application Insights browser SDK and resource | Optional browser page-view and timing telemetry through a Microsoft-managed intake; the workspace-based resource also stores telemetry in Log Analytics. |
+| RUM Event Hubs namespace | Optional dedicated broker for Application Insights diagnostic export and the native Eventhouse data connection. Its SAS policies are separate from the identity-only OTLP broker. |
+| `RUMEnvelopes` / `RUMEvents` | Optional Eventhouse table and KQL function that retain Azure Monitor envelopes and expand their `records` arrays. |
 
 The Container Apps environment is a managed public-network environment with an
 **internal application ingress**. Other applications in the same environment can
@@ -57,6 +76,7 @@ receiver inside the environment.
 | Fabric service API | Python bootstrap: workspace, Eventhouse, KQL database, and Grafana workspace Viewer grant. | These are Fabric service objects with Fabric permissions. |
 | Kusto data plane | KQL: tables, mappings, policies, materialized views, functions, and database ingestor grants. | These define data storage, query behavior, and data access. |
 | Kubernetes API (optional) | Helm chart: AKS collector, instrumented services, load generator, and network policies. | These are cluster workloads, installed after Terraform creates the cluster. |
+| Browser RUM (optional) | Separate Bicep deployment, browser SDK, diagnostic export, and a native Eventhouse data connection. | The browser SDK does not send OTLP and the documented connection uses SAS. |
 
 Creating Azure resources does not grant access to Fabric data. A capacity ARM
 resource ID is also different from the Fabric capacity UUID used to assign a

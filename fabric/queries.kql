@@ -55,3 +55,9 @@ OTELTraces
 | extend Service=tostring(ResourceAttributes["service.name"])
 | summarize Spans=count(), Traces=dcount(TraceID), RootRequests=countif(SpanName == "demo.request"), RootErrors=countif(SpanName == "demo.request" and SpanStatus == "STATUS_CODE_ERROR") by Service
 | order by Service asc
+
+// 10. Optional RUM: expand every record in Azure Monitor's Event Hubs envelope.
+// Configure the separate fabric/rum.kql schema and the Eventhouse connection first.
+RUMEvents(24h)
+| summarize Events=count(), Latest=max(Timestamp) by Type
+| order by Events desc

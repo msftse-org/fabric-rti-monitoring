@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { evaluateAlert, formatAlertValue, seedAlertDefinitions } from '../src/lib/alerts.ts';
+import { applyIncidentAction, createIncidentState, reconcileIncidents } from '../src/lib/incidents.ts';
 
 const service = (overrides = {}) => ({
   name: 'checkout',
@@ -56,4 +57,36 @@ test('seeds realistic local-only examples and formats values with units', () => 
   assert.equal(formatAlertValue('error_rate', 2.45), '2.45%');
   assert.equal(formatAlertValue('p95_latency', 350), '350 ms');
   assert.equal(formatAlertValue('trace_errors', null), 'No data');
+});
+
+test('creates alert-generated incidents on trigger edges and auto-resolves on recovery', () => {
+  const enabledRule = rule({ id: 'edge-rule', name: 'Checkout errors' });
+  let state = createIncidentState();
+  state = reconcileIncidents(state, [{ rule: enabledRule, value: 12, triggered: true }], 1_000, () => 'episode-1');
+  assert.equal(state.incidents.length, 1);
+  assert.equal(state.incidents[0].status, 'triggered');
+  assert.equal(state.incidents[0].alertId, enabledRule.id);
+
+  state = reconcileIncidents(state, [{ rule: enabledRule, value: 2, triggered: false }], 2_000, () => 'unused');
+  assert.equal(state.incidents[0].status, 'resolved');
+  assert.equal(state.incidents[0].resolvedBy, 'alert');
+
+  state = reconcileIncidents(state, [{ rule: enabledRule, value: 13, triggered: true }], 3_000, () => 'episode-2');
+  assert.deepEqual(state.incidents.map((incident) => incident.id), ['episode-2', 'episode-1']);
+  assert.equal(state.incidents[0].status, 'triggered');
+});
+
+test('acknowledges and assigns locally, snoozes, and resolves with an audit history', () => {
+  let state = reconcileIncidents(createIncidentState(), [{ rule: rule({ id: 'ops-rule' }), value: 12, triggered: true }], 1_000, () => 'ops-episode');
+  state = applyIncidentAction(state, 'ops-episode', { kind: 'assign', by: 'You', at: 1_500 });
+  state = applyIncidentAction(state, 'ops-episode', { kind: 'acknowledge', by: 'You', at: 2_000 });
+  assert.equal(state.incidents[0].status, 'acknowledged');
+  assert.equal(state.incidents[0].assignedTo, 'You');
+
+  state = applyIncidentAction(state, 'ops-episode', { kind: 'snooze', by: 'You', at: 3_000, until: 63_000 });
+  state = applyIncidentAction(state, 'ops-episode', { kind: 'assign', by: 'You', at: 4_000 });
+  state = applyIncidentAction(state, 'ops-episode', { kind: 'resolve', by: 'You', at: 5_000 });
+  assert.equal(state.incidents[0].status, 'resolved');
+  assert.equal(state.incidents[0].resolvedBy, 'user');
+  assert.deepEqual(state.incidents[0].events.map((event) => event.kind), ['triggered', 'assigned', 'acknowledged', 'snoozed', 'resolved']);
 });

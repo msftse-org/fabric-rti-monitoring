@@ -118,9 +118,9 @@ function PageDetail({ page, onClose }: { page: Page; onClose: () => void }) {
             <div>
               <dt>Incident</dt>
               <dd>
-                <span className="oc-incident">
-                  <Flame size={12} aria-hidden="true" /> {page.incidentId}
-                </span>
+                <a className="oc-incident" href={`#${paths.oncallIncidents()}`}>
+                  <Flame size={12} aria-hidden="true" /> {page.incidentId} · View incident
+                </a>
               </dd>
             </div>
           )}

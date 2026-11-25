@@ -291,12 +291,15 @@ a.crumbs__item:hover {
   align-items: center;
   gap: 12px;
   flex: none;
-  height: 24px;
-  padding: 0 14px;
+  min-height: 32px;
+  padding: 4px 14px;
   background: var(--bg);
   border-top: 1px solid var(--border);
   font-size: 11px;
   color: var(--text-3);
+}
+.footer .telemetry-status {
+  color: var(--text-2);
 }
 .footer__text {
   flex: 1;
@@ -455,6 +458,9 @@ a.crumbs__item:hover {
   }
   .footer {
     justify-content: flex-end;
+  }
+  .footer .telemetry-status {
+    max-width: 100%;
   }
   .banner {
     font-size: 11px;

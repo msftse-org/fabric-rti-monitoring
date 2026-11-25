@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "build:fabric": "tsc --noEmit && vite build",

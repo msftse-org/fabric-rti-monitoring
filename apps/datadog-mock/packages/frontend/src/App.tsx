@@ -17,6 +17,7 @@ import { TraceViewPage } from './pages/TraceViewPage';
 import { TracesPage } from './pages/TracesPage';
 import { MonitorDetailPage, MonitorsPage } from './pages/monitors/MonitorsPage';
 import { AnalyticsPage } from './pages/oncall/AnalyticsPage';
+import { IncidentsPage } from './pages/oncall/IncidentsPage';
 import { PagesPage } from './pages/oncall/PagesPage';
 import { PoliciesPage, PolicyPage } from './pages/oncall/PoliciesPage';
 import { SchedulePage, SchedulesPage } from './pages/oncall/SchedulesPage';
@@ -55,6 +56,8 @@ function OnCallContent({ route }: { route: Route }) {
       return <SummaryPage />;
     case 'oncall-pages':
       return <PagesPage status={route.status} pageId={route.pageId} />;
+    case 'oncall-incidents':
+      return <IncidentsPage />;
     case 'oncall-teams':
       return <TeamsPage />;
     case 'oncall-team':

@@ -110,9 +110,9 @@ jobs:
           cache-dependency-path: apps/package-lock.json
       - run: npm ci --ignore-scripts
       - run: npm ci --ignore-scripts --prefix rti-oncall/packages/functions
-      - name: Test the telemetry bundle logic
+      - name: Test telemetry, on-call, alerting, and migration cost models
         run: npm test
-      - name: Typecheck and build the three Rayfin mock apps
+      - name: Typecheck and build the Rayfin apps
         run: |
           npm run typecheck
           npm run build

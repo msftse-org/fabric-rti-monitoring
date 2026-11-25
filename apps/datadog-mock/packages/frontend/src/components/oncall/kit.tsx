@@ -5,17 +5,14 @@ import {
   BellRing,
   Check,
   Eye,
-  Mail,
-  MessageSquare,
-  MessagesSquare,
-  Phone,
   RotateCcw,
-  Smartphone,
   X,
   type LucideIcon,
 } from 'lucide-react';
 import { dateTime, type Channel, type MonitorState, type PageStatus, type Team, type Urgency, type User } from '@oncall';
 import { compareUrl, useOnCall } from '../../lib/oncall';
+import { incidentStore, useDatadogIncidents } from '../../lib/incidentStore';
+import { CHANNELS } from './channels';
 import { paths } from '../../lib/router';
 
 export function Avatar({ user, size = 22 }: { user: User | undefined; size?: number }) {
@@ -100,14 +97,6 @@ const MONITOR_LABEL: Record<MonitorState, string> = { ok: 'OK', warn: 'WARN', al
 export function MonitorChip({ state }: { state: MonitorState }) {
   return <span className={`chip chip--${state === 'no_data' ? 'nodata' : state}`}>{MONITOR_LABEL[state]}</span>;
 }
-
-export const CHANNELS: Record<Channel, { label: string; icon: LucideIcon }> = {
-  push: { label: 'Push', icon: Smartphone },
-  sms: { label: 'SMS', icon: MessageSquare },
-  voice: { label: 'Voice call', icon: Phone },
-  email: { label: 'Email', icon: Mail },
-  chat: { label: 'Chat', icon: MessagesSquare },
-};
 
 export function ChannelTag({ channel }: { channel: Channel }) {
   const { label, icon: Icon } = CHANNELS[channel];
@@ -212,9 +201,14 @@ export function AsOf() {
 
 export function ResetActions() {
   const { actions, reset } = useOnCall();
-  if (!actions.length) return null;
+  const incidents = useDatadogIncidents();
+  if (!actions.length && !incidents.length) return null;
+  const resetAll = () => {
+    reset();
+    incidentStore.clear();
+  };
   return (
-    <button type="button" className="btn btn--ghost oc-reset" onClick={reset} title="Reset demo actions" aria-label={`Reset demo actions (${actions.length})`}>
+    <button type="button" className="btn btn--ghost oc-reset" onClick={resetAll} title="Reset demo actions and incidents" aria-label={`Reset demo actions (${actions.length + incidents.length})`}>
       <RotateCcw size={13} aria-hidden="true" />
       <span className="oc-reset__label">Reset demo</span>
     </button>

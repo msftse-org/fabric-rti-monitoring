@@ -11,17 +11,27 @@ flowchart LR
     loadgen -->|"HTTP"| services
     services -->|"OTLP logs, spans, metrics"| akscollector
   end
+  subgraph rum["Optional browser real user monitoring"]
+    browser["Web application\nApplication Insights browser SDK"]
+    appinsights["Workspace-based Application Insights\nManaged browser ingestion"]
+    rumhub["Azure Event Hubs\nDedicated namespace + consumer group"]
+    browser -->|"Browser telemetry · HTTPS"| appinsights
+    appinsights -->|"Diagnostic settings export"| rumhub
+  end
   identity["User-assigned managed identity\nDatabase ingestor"]
   identity -.-> collector
   identity -.->|"Workload identity federation"| akscollector
   subgraph fabric["Microsoft Fabric workspace on active capacity"]
     raw[("Eventhouse / KQL database\nOTELLogs · OTELTraces · OTELMetrics")]
+    rumraw[("RUMEnvelopes\nAzure Monitor records")]
+    rumquery["RUMEvents KQL function"]
     mv["Materialized views\nLogs1m · Requests1m · Metrics1m"]
     functions["KQL serving functions"]
     metrics["Fabric RTI Metrics"]
     logs["Fabric RTI Logs"]
     traces["Fabric RTI Traces"]
     raw --> mv --> functions
+    rumraw --> rumquery
     functions --> metrics
     functions --> logs
     functions --> traces
@@ -31,7 +41,9 @@ flowchart LR
   end
   collector -->|"Azure Data Explorer exporter\nManaged streaming + queued fallback"| raw
   akscollector -->|"Azure Data Explorer exporter"| raw
+  rumhub -->|"Native Eventhouse connection\nSAS cloud connection"| rumraw
   collector -.->|"Platform diagnostics"| la["Log Analytics"]
+  appinsights -.->|"Workspace-based storage"| la
   subgraph consume["Consume (optional unless noted)"]
     grafana["Azure Managed Grafana · deployed\nSystem-assigned identity · Viewer\nMetrics · Logs · Traces dashboards"]
     powerbi["Power BI\nKQL database connector"]
@@ -49,8 +61,9 @@ flowchart LR
   end
   functions -->|"KQL results"| grafana
   raw -->|"Raw detail queries"| grafana
+  rumquery -->|"Browser telemetry queries"| grafana
   functions -->|"KQL"| powerbi
-  raw -->|"Read-only KQL snapshot"| apps
+  raw -->|"Read-only KQL · signed-in viewer"| apps
   raw -->|"KQL"| explore
   functions -->|"KQL rules"| act
   raw -->|"MCP tools, caller identity"| ehmcp

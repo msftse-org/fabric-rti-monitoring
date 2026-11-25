@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import { useTelemetry, type TelemetryBundle, type TelemetryMode } from '@telemetry';
+import { useTelemetry, type TelemetryBundle, type TelemetryState } from '@telemetry';
 import { computeEdges, computeStats, type EdgeStat, type ServiceStat } from './derive';
 import { MINUTE } from './time';
 import { buildWindow, type WindowedData } from './window';
@@ -32,13 +32,8 @@ export interface AppData extends WindowedData {
   edges: EdgeStat[];
 }
 
-export interface SourceState {
-  mode: TelemetryMode | null;
-  loading: boolean;
-  error: string | null;
-  fellBack: boolean;
+export interface SourceState extends TelemetryState {
   generatedAt: string | null;
-  refresh: () => void;
 }
 
 interface AppContextValue {
@@ -116,12 +111,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const source: SourceState = {
-    mode: telemetry.mode,
-    loading: telemetry.loading,
-    error: telemetry.error,
-    fellBack: telemetry.fellBack,
+    ...telemetry,
+    bundle,
+    mode: bundle?.source ?? telemetry.mode,
     generatedAt: bundle?.generatedAt ?? null,
-    refresh: telemetry.refresh,
   };
 
   return <AppContext.Provider value={{ source, time, data }}>{children}</AppContext.Provider>;

@@ -1,8 +1,8 @@
 import { CircleHelp, Menu, Sparkles } from 'lucide-react';
+import { TelemetryStatus } from '@telemetry';
 import { useDataState } from '../lib/data';
 import { DISCLAIMER } from '../lib/disclaimer';
 import { useRoute, type Route } from '../lib/router';
-import { formatClock } from '../lib/time';
 import { useToast } from '../lib/toast';
 import { Popover } from './Popover';
 
@@ -31,19 +31,7 @@ function breadcrumb(route: Route): string[] {
 
 function DataIndicator() {
   const { telemetry } = useDataState();
-  if (!telemetry.bundle) return null;
-  if (telemetry.mode === 'live') {
-    return (
-      <span className="data-indicator is-live" title="Reading the local telemetry API; refreshes every 15 seconds">
-        <i aria-hidden /> Live
-      </span>
-    );
-  }
-  return (
-    <span className="data-indicator" title={telemetry.fellBack ? 'Live API is not running, showing the bundled snapshot' : 'Bundled snapshot of real OpenTelemetry data'}>
-      <i aria-hidden /> Snapshot · generated {formatClock(Date.parse(telemetry.bundle.generatedAt))} UTC
-    </span>
-  );
+  return <TelemetryStatus telemetry={telemetry} />;
 }
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {

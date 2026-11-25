@@ -20,15 +20,20 @@ components. See [On-Call: Datadog and Fabric RTI side by side](#on-call-datadog-
 flowchart LR
   E[(Fabric Eventhouse<br/>OTELTraces, OTELLogs, OTELMetrics)]
   E -->|read-only KQL, your az token| A[apps/telemetry<br/>loopback API 127.0.0.1:8787]
+  E -->|read-only KQL, signed-in viewer| L[Shared browser client<br/>Entra SPA authentication + auto-refresh]
   E -->|npm run snapshot| S[telemetry.snapshot.json]
   A -->|dev: live, 15 s refresh| D[datadog-mock]
   A --> C[coralogix-mock]
   A --> G[groundcover-mock]
   A --> R[rti-oncall]
-  S -->|deployed build| D
-  S --> C
-  S --> G
-  S --> R
+  L -->|deployed build| D
+  L --> C
+  L --> G
+  L --> R
+  S -.->|labeled fallback| D
+  S -.-> C
+  S -.-> G
+  S -.-> R
   O[apps/oncall<br/>shared on-call engine] -.-> D
   O -.-> R
 ```
@@ -37,8 +42,8 @@ flowchart LR
 
 | Path | Purpose |
 | --- | --- |
-| [`apps/telemetry/`](../apps/telemetry/) | Shared data layer: a read-only Kusto client, the KQL that reads spans, logs, and metrics, a pure bundle builder (services, dependency edges, traces, joined logs, metric series), a loopback API, a snapshot exporter, and the typed client (`useTelemetry`, query parser, formatters) that all four apps import as `@telemetry`. |
-| [`apps/datadog-mock/`](../apps/datadog-mock/) | Log Explorer, APM service catalog and service pages, service map, trace flame graph and waterfall, Metrics Explorer, a dashboard, Monitors, and On-Call (pages, teams, schedules, escalation policies, analytics, and settings). |
+| [`apps/telemetry/`](../apps/telemetry/) | Shared data layer: read-only Node and authenticated browser Kusto clients, shared bounded KQL, a pure bundle builder (services, dependency edges, traces, joined logs, metric series), a loopback API, a snapshot exporter, and the typed client (`useTelemetry`, query parser, formatters) that all four apps import as `@telemetry`. |
+| [`apps/datadog-mock/`](../apps/datadog-mock/) | Log Explorer, APM service catalog and service pages, service map, trace flame graph and waterfall, Metrics Explorer, a dashboard, Monitors, and On-Call (pages, incidents, teams, schedules, escalation policies, analytics, and settings). |
 | [`apps/oncall/`](../apps/oncall/) | Shared, deterministic on-call engine imported as `@oncall`: seeded teams, schedules, routing rules, escalation policies, and monitors; pages derived from seven days of real service health; viewer actions; analytics; the Datadog and Fabric capability matrix; and cross-links between the two apps. |
 | [`apps/rti-oncall/`](../apps/rti-oncall/) | On-call management for Fabric Real-Time Intelligence: the same pages and schedules expressed as Activator rules, Eventhouse tables, and Power Automate paging flows, plus a capability matrix and a side-by-side page comparison. |
 | [`apps/coralogix-mock/`](../apps/coralogix-mock/) | Dark APM service catalog with derived SLO and health, service drill-down, service map, Explore Logs, Explore Tracing, plus local-only alert definitions for metrics, logs, traces and simulated email/Teams/PagerDuty destinations. |
@@ -87,18 +92,56 @@ the bootstrap script writes. In dev the apps poll it every 15 seconds and fall
 back to the bundled snapshot when it is not running.
 
 The Coralogix mock's **Alerts > Alert Definitions** page saves rules in the
-browser and evaluates their current signal against the telemetry window. Email,
-Microsoft Teams and PagerDuty are simulated notification destinations only;
-this mock does not deliver messages or manage on-call schedules. Coralogix's
-documented PagerDuty connector routes alerts to PagerDuty, where schedules and
-escalations are managed.
+browser and evaluates their current signal against the telemetry window. Its
+**Alerts > Incidents** view records alert-generated incidents locally: a
+triggered condition opens an incident, acknowledgment and assignment are
+simulated, snooze records a local reminder time, and alert recovery resolves it.
+A later trigger edge creates a new incident. This is separate from Datadog's
+manually declared, On-Call Page-linked incidents. Email, Microsoft Teams and
+PagerDuty are simulated notification destinations only; this mock does not
+deliver messages or manage on-call schedules. Coralogix's documented PagerDuty
+connector routes alerts to PagerDuty, where schedules and escalations are
+managed.
 
 ## Deploy to Fabric with Rayfin
 
-The deployed visualization pages read a point-in-time snapshot containing only
-synthetic demo telemetry. RTI On-Call's authenticated alert backend separately
-creates live Activator KQL sources; alert execution does not depend on refreshing
-that snapshot.
+The deployed visualization pages can query Eventhouse directly as the signed-in
+viewer and refresh automatically. This uses a single-tenant Microsoft Entra SPA
+registration with delegated Azure Data Explorer `user_impersonation`, authorization
+code flow with PKCE, and no client secret or custom hosted query API. Eventhouse
+permissions still apply to every viewer. The bundled snapshot is a labeled,
+point-in-time fallback, not a live feed.
+
+After the four apps have an existing Fabric deployment, configure live access:
+
+```bash
+python3 scripts/configure-mock-live.py
+```
+
+The script creates or reuses the **Fabric RTI Mock Telemetry** app registration,
+registers each deployed app's `/auth-redirect.html` SPA callback, and writes public
+configuration to each frontend's ignored `.env.local` without replacing its
+Rayfin settings. It discovers the Eventhouse from `output/fabric.local.json`.
+The Azure CLI user needs permission to register an Entra application. The script
+does not create secrets, grant database access, or grant tenant-wide consent.
+
+| Frontend variable | Purpose |
+| --- | --- |
+| `VITE_ENTRA_CLIENT_ID` | The SPA application's public client ID. |
+| `VITE_ENTRA_TENANT_ID` | The owning Microsoft Entra tenant. |
+| `VITE_KUSTO_CLUSTER_URI` | The trusted Fabric Eventhouse HTTPS query endpoint. |
+| `VITE_KUSTO_DATABASE` | The KQL database name. |
+| `VITE_TELEMETRY_MODE=live` | Enable automatic live updates; `snapshot` explicitly opts out. |
+
+Build and deploy the apps after configuring them. Open each app and select
+**Connect live data** to sign in and consent if requested. Allow the sign-in popup.
+If tenant policy requires administrator consent, that approval must be completed
+before live queries work. The app silently renews its tokens and refreshes while
+open; it never launches a sign-in popup from a timer. No recurring snapshot
+deployment is required for a connected live session.
+
+RTI On-Call's authenticated alert backend separately creates live Activator KQL
+sources; alert execution is independent of the visualization refresh.
 
 ```bash
 cd apps
@@ -129,8 +172,10 @@ grep '"hostingUrl"' */rayfin/.deployments.json     # run from apps/
 Opening that URL in a browser shows a Fabric "Sign in to continue" page. Allow
 popups, select **Sign in**, and sign in with an account that can open the
 workspace. Requests without a browser session, such as `curl`, get
-`401 Authentication required`. Re-run `npm run snapshot` and `rayfin up` to
-refresh the data.
+`401 Authentication required`. Static-hosting sign-in and the **Connect live data**
+action are separate: the latter authorizes direct Eventhouse reads. Re-run
+`npm run snapshot` and `rayfin up` only to update the fallback snapshot or app
+code, not to refresh an already connected live feed.
 
 A snapshot keeps every log line in its window but only a sample of traces (the
 newest, every error, and the slowest), so older minutes of the trace histograms
@@ -145,8 +190,11 @@ The Datadog mock has a Datadog On-Call section modelled on the public
 monitors page a team through its `@oncall-<team>` handle, ordered routing rules
 pick an escalation policy and urgency (with support hours), the policy notifies
 schedule, user, or team targets step by step until someone acknowledges, and
-responders acknowledge, reassign, snooze, comment, declare an incident, or
-resolve. Schedules have layers, restrictions, and overrides; analytics report
+responders acknowledge, reassign, snooze, comment, declare a page-linked
+incident, or resolve. Declared incidents have a separate browser-local
+On-Call > Incidents workflow for acknowledgment, assignment, resolution, and
+history; these actions do not create external incidents or change page
+escalation state. Schedules have layers, restrictions, and overrides; analytics report
 MTTA, MTTR, escalations, and responder load.
 
 `rti-oncall` applies the same methodology with Fabric Real-Time Intelligence:

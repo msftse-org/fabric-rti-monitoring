@@ -8,6 +8,7 @@ const TABS: { id: string; label: string; path: string; match: (route: Route) => 
   { id: 'summary', label: 'Summary', path: paths.oncall(), match: (route) => route.name === 'oncall' },
   { id: 'teams', label: 'Teams', path: paths.oncallTeams(), match: (route) => route.name === 'oncall-teams' || route.name === 'oncall-team' },
   { id: 'pages', label: 'Pages', path: paths.oncallPages(), match: (route) => route.name === 'oncall-pages' },
+  { id: 'incidents', label: 'Incidents', path: paths.oncallIncidents(), match: (route) => route.name === 'oncall-incidents' },
   { id: 'schedules', label: 'Schedules', path: paths.oncallSchedules(), match: (route) => route.name === 'oncall-schedules' || route.name === 'oncall-schedule' },
   { id: 'policies', label: 'Escalation Policies', path: paths.oncallPolicies(), match: (route) => route.name === 'oncall-policies' || route.name === 'oncall-policy' },
   { id: 'analytics', label: 'Analytics', path: paths.oncallAnalytics(), match: (route) => route.name === 'oncall-analytics' },

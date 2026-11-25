@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { useTelemetry, type TelemetryMode } from '@telemetry';
+import { useTelemetry, type TelemetryState } from '@telemetry';
 import { useLiveAlerts } from './liveAlerts';
 import {
   applyActions,
@@ -65,12 +65,7 @@ function spanOf(history: History, now: number): string {
   return days <= 1 ? 'the last 24 hours' : `the last ${days} days`;
 }
 
-export interface DataState {
-  mode: TelemetryMode | null;
-  loading: boolean;
-  error: string | null;
-  fellBack: boolean;
-  refresh: () => void;
+export interface DataState extends TelemetryState {
   onCall: OnCall | null;
 }
 
@@ -140,8 +135,8 @@ export function OnCallProvider({ children }: { children: ReactNode }) {
   }, [model, lk, now, actions, act, createPage, clock, byViewer, rules, history, saveRule, deleteRule, liveAlerts, localRules.length]);
 
   const value = useMemo<DataState>(
-    () => ({ mode: telemetry.mode, loading: telemetry.loading, error: telemetry.error, fellBack: telemetry.fellBack, refresh: telemetry.refresh, onCall }),
-    [telemetry.mode, telemetry.loading, telemetry.error, telemetry.fellBack, telemetry.refresh, onCall],
+    () => ({ ...telemetry, onCall }),
+    [telemetry, onCall],
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

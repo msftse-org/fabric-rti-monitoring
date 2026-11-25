@@ -1,14 +1,16 @@
-"""Offline checks for the demo's OTLP wire contract and public serving assets."""
+"""Checks for the demo's OTLP wire contract and public serving assets."""
 
 import contextlib
 import importlib.util
 import io
 import json
+import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import re
 import threading
 import unittest
+import urllib.request
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -259,6 +261,45 @@ class ServingAssetTests(unittest.TestCase):
                         "p95 latency from server spans", "Service health", "Service map"):
                     self.assertIn('SpanKind == "SPAN_KIND_SERVER"', query)
                     self.assertNotIn("RequestsOverview(", query)
+
+
+@unittest.skipUnless(os.environ.get("RUN_FABRIC_RUM_INTEGRATION") == "1",
+                     "Set RUN_FABRIC_RUM_INTEGRATION=1 to run read-only Fabric KQL checks")
+class RumQueryIntegrationTests(unittest.TestCase):
+    def test_expands_all_records_and_filters_old_events(self):
+        spec = importlib.util.spec_from_file_location("bootstrap_fabric", ROOT / "scripts" / "bootstrap-fabric.py")
+        bootstrap = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bootstrap)
+        config = json.loads((ROOT / "output" / "fabric.local.json").read_text())
+        url = bootstrap.kusto_management_url(config["queryServiceUri"]).removesuffix("/mgmt") + "/query"
+        schema = (ROOT / "fabric" / "rum.kql").read_text()
+        body = schema.split("RUMEvents(lookback:timespan=24h) {", 1)[1].rsplit("}", 1)[0]
+        body = body.replace("RUMEnvelopes", "SampleEnvelopes").replace("ingestion_time()", "IngestedAt")
+        query = """
+let SampleEnvelopes = union
+    (print Records=pack_array(bag_pack("time", tostring(now()), "type", "AppPageViews", "properties", bag_pack("name", "landing")), bag_pack("time", tostring(now()), "type", "AppBrowserTimings", "properties", bag_pack("name", "timing")))),
+    (print Records=pack_array(bag_pack("time", tostring(now()), "category", "AppEvents", "properties", bag_pack("name", "event")), bag_pack("time", tostring(ago(13h)), "type", "AppPageViews", "properties", bag_pack("name", "earlier")), bag_pack("time", tostring(ago(25h)), "type", "AppPageViews", "properties", bag_pack("name", "old")))),
+    (print Records=dynamic([]))
+    | extend IngestedAt=now();
+let RUMEvents=(lookback:timespan=24h) {
+""" + body + """
+};
+union (RUMEvents() | extend Range="default"), (RUMEvents(1h) | extend Range="short")
+| summarize Count=count(), Types=make_set(Type), Names=make_set(tostring(Properties.name)) by Range
+"""
+        request = urllib.request.Request(
+            url, data=json.dumps({"db": config["databaseName"], "csl": query}).encode(),
+            method="POST", headers={
+                "Authorization": "Bearer " + bootstrap.azure_cli_token("https://kusto.kusto.windows.net"),
+                "Content-Type": "application/json",
+            },
+        )
+        with urllib.request.build_opener(bootstrap.NoRedirect).open(request, timeout=60) as response:
+            rows = json.load(response)["Tables"][0]["Rows"]
+        results = {scope: (count, set(types), set(names)) for scope, count, types, names in rows}
+        types = {"AppPageViews", "AppBrowserTimings", "AppEvents"}
+        self.assertEqual(results["default"], (4, types, {"landing", "timing", "event", "earlier"}))
+        self.assertEqual(results["short"], (3, types, {"landing", "timing", "event"}))
 
 
 class RealTimeDashboardTests(unittest.TestCase):

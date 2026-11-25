@@ -23,6 +23,7 @@ The sample provides several delivery surfaces over one telemetry store:
 | **Fabric dashboards** | Fabric Real-Time Dashboards | Native workspace visualization | Three matching dashboards with linked filters and trace investigation |
 | **Observability apps (optional)** | Rayfin + React + TypeScript | Compare familiar observability workflows | Unofficial Datadog, Coralogix, and groundcover mock apps |
 | **RTI On-Call app (optional)** | Rayfin + Fabric Functions + Activator | Compare on-call designs and author alerts | Simulated pages/schedules plus persistent, live Teams/email alert rules |
+| **Migration advisor (optional)** | Rayfin + React + local calculations | Plan migration, compare costs, and suggest OTel configuration | Feature mappings, pricing assumptions, Fabric-only or dual-output collector suggestions, and exports |
 | **AI agents (optional)** | Eventhouse/Grafana MCP + Agent Skills | Natural-language investigation | Queries and correlated evidence from the same telemetry |
 
 Core functionality includes:
@@ -156,11 +157,18 @@ six services, a load generator, and an in-cluster collector to keep dashboards
 live. AKS records use environment `aks`; the finite job uses `demo`.
 
 The [Fabric apps guide](docs/mock-apps.md) covers all four Rayfin apps. Local
-visualizations query live telemetry; deployed visualizations use a point-in-time
-snapshot. RTI On-Call's authenticated alert backend separately creates live
+visualizations query the loopback API; configured deployments query Eventhouse
+directly with the signed-in viewer's Entra identity and refresh automatically.
+A point-in-time snapshot remains available as a labeled fallback. RTI On-Call's
+authenticated alert backend separately creates live
 Activator rules. Its current backend expects a KQL database named
 `observability` in the app's workspace; follow the app-specific setup guidance
 rather than assuming the baseline `Observability` name works unchanged.
+
+The separate [migration and cost advisor](docs/migration-advisor.md) maps source
+features to Grafana, Fabric, and companion services, and compares customer-entered
+cost assumptions. It runs locally without vendor credentials; this first version
+does not discover, convert, or deploy source resources.
 
 ---
 
@@ -209,11 +217,12 @@ npm run dev:datadog       # http://localhost:5181
 npm run dev:coralogix     # http://localhost:5182
 npm run dev:groundcover   # http://localhost:5183
 npm run dev:rti-oncall    # http://localhost:5184
+npm run dev:migration-advisor # http://localhost:5185; no telemetry API required
 ```
 
 The read-only API listens on `127.0.0.1:8787`; frontends refresh every 15 seconds
 and fall back to their bundled snapshot when the API is unavailable.
-Deployment, Fabric SSO, and live alert authoring require the additional steps in
+Deployment, direct Eventhouse sign-in, Fabric SSO, and live alert authoring require the additional steps in
 the [apps guide](docs/mock-apps.md).
 
 ---
@@ -257,7 +266,21 @@ aggregation semantics, and retention policies.
 The solution separates telemetry collection, storage, aggregation, and
 consumption so each can evolve independently.
 
-![Architecture: Container Apps and optional AKS workloads send OTLP to internal collectors; managed identities connect them to Fabric Eventhouse, and KQL, REST, and MCP serve dashboards, apps, exploration, alerting, and AI agents.](docs/assets/architecture-azure.png)
+![Baseline architecture: Container Apps and optional AKS workloads send OTLP to internal collectors and Fabric Eventhouse; the optional browser RUM path is shown below.](docs/assets/architecture-azure.png)
+
+The optional browser RUM path uses managed services without a custom intake:
+
+```mermaid
+flowchart LR
+  browser["Web app<br/>Application Insights JS SDK"] --> ai["Application Insights<br/>managed intake"]
+  ai -->|"Diagnostic export"| hub["Azure Event Hubs"]
+  ai -.-> la["Log Analytics"]
+  hub -->|"Native data connection"| fabric["Fabric Eventhouse<br/>RUMEnvelopes + RUMEvents"]
+  fabric --> consumers["KQL / dashboards"]
+```
+
+The [RUM guide](docs/rum.md) also describes a direct Azure Monitor mirroring
+alternative in public preview; it is not provisioned by this sample.
 
 ### Main Components
 
@@ -269,6 +292,9 @@ consumption so each can evolve independently.
   collector/job hosting, platform diagnostics, and Terraform-only AKS.
 - **Fabric bootstrap (`scripts/`)**: workspace, Eventhouse, database/schema,
   Grafana Viewer grant, and optional native dashboard publishing.
+- **Browser RUM (`infra/optional/rum.bicep`, `fabric/rum.kql`)**: opt-in
+  Application Insights browser telemetry, managed diagnostic export, Event Hubs,
+  and a native Eventhouse connection. See the [RUM guide](docs/rum.md).
 - **Analytics (`fabric/`)**: raw tables, materialized views, serving functions,
   and investigation queries.
 - **Consumers (`grafana/`, `apps/`, `.github/skills/`)**: dashboards, optional
@@ -294,8 +320,9 @@ additional configuration.
 See [architecture](docs/architecture.md),
 [consumer options](docs/consume.md), and
 [security and operations](docs/security-and-operations.md).
-The [buffered ingestion option](docs/buffered-architecture.md) includes an
-Event Hubs foundation, not a complete Eventstream ingestion pipeline.
+The [buffered OTLP ingestion option](docs/buffered-architecture.md) includes an
+Event Hubs foundation, not a complete Eventstream ingestion pipeline. It is
+separate from the optional browser RUM path above.
 Generated illustrations are explanatory; the IaC, collector configuration, KQL,
 and [editable diagrams](docs/diagrams/) define the technical contract.
 
@@ -324,7 +351,8 @@ fabric-rti-monitoring/
 │   ├── datadog-mock/
 │   ├── coralogix-mock/
 │   ├── groundcover-mock/
-│   └── rti-oncall/
+│   ├── rti-oncall/
+│   └── migration-advisor/
 ├── scripts/
 ├── tests/
 ├── .github/skills/
@@ -397,10 +425,13 @@ in collector logs, not in Fabric.
 
 ### App snapshots or Fabric sign-in
 
-Deployed visualizations do not continuously refresh: regenerate the snapshot
-with `npm run snapshot -- 60` from `apps/`, rebuild, and redeploy with Rayfin.
-Use the generated `hostingUrl`, allow the Fabric sign-in popup, and sign in with
-workspace access. Starting live Activator rules can send real notifications;
+For automatic deployed updates, run `python3 scripts/configure-mock-live.py`,
+rebuild, and redeploy the four mocks, then select **Connect live data** in each
+app. The viewer needs KQL database read access and may need consent for the
+delegated Azure Data Explorer permission. A snapshot label means the displayed
+data is not live; `npm run snapshot -- 60` from `apps/` refreshes only that fallback.
+Use the generated `hostingUrl` and allow the Fabric and live-data sign-in popups.
+Starting live Activator rules can send real notifications;
 save them stopped if you only want to demonstrate authoring.
 
 For teardown, follow the deployment guide: Azure resources and Fabric items are

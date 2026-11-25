@@ -1,0 +1,21 @@
+{
+  "name": "@rti-mock/migration-advisor-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@microsoft/applicationinsights-web": "^3.4.6"
+  },
+  "scripts": {
+    "dev": "vite --port 5185 --strictPort",
+    "preview": "vite preview --port 5185 --strictPort",
+    "test": "node --experimental-strip-types --test test/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "build:fabric": "tsc --noEmit && vite build"
+  }
+}

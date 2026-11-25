@@ -63,7 +63,20 @@
 @media (max-width: 760px) {
   .topbar {
     gap: 6px;
-    padding: 0 8px 0 4px;
+    padding: 4px 8px 4px 4px;
+    flex-wrap: wrap;
+  }
+
+  .topbar__end {
+    flex: 1 1 100%;
+  }
+
+  .topbar__end .telemetry-status {
+    flex: 1;
+    max-width: none;
+    margin-inline-end: auto;
+    justify-content: flex-start;
+    text-align: start;
   }
 
   .topbar__menu {

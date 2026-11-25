@@ -7,6 +7,8 @@ import { Dropdown, Select } from '../Select';
 import { Segmented } from '../ui';
 import { MINUTE } from '../../lib/time';
 import { Modal, PersonPill } from './kit';
+import { declareIncident } from '../../lib/incidentModel';
+import { incidentStore } from '../../lib/incidentStore';
 
 function TeamOnCall({ teamId }: { teamId: string }) {
   const { team, lk, now } = useOnCall();
@@ -170,7 +172,7 @@ export function ReassignModal({ page, onClose }: { page: Page; onClose: () => vo
 const SEVERITIES = ['Unknown', 'SEV-5', 'SEV-4', 'SEV-3', 'SEV-2', 'SEV-1'];
 
 export function DeclareIncidentModal({ page, onClose }: { page: Page; onClose: () => void }) {
-  const { model, act, team } = useOnCall();
+  const { model, act, team, clock } = useOnCall();
   const notify = useToast();
   const [title, setTitle] = useState(page.title);
   const [severity, setSeverity] = useState(page.urgency === 'high' ? 'SEV-2' : 'SEV-4');
@@ -179,8 +181,20 @@ export function DeclareIncidentModal({ page, onClose }: { page: Page; onClose: (
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const incidentId = `IR-${page.id % 10_000}`;
-    act({ kind: 'incident', pageId: page.id, incidentId, title: `${severity} ${title.trim() || page.title}` });
+    const incidentId = `IR-${page.id}`;
+    const at = clock();
+    const incidentTitle = `${severity} ${title.trim() || page.title}`;
+    incidentStore.add(declareIncident({
+      id: incidentId,
+      pageId: page.id,
+      title: incidentTitle,
+      summary,
+      severity: severity as 'Unknown' | 'SEV-1' | 'SEV-2' | 'SEV-3' | 'SEV-4' | 'SEV-5',
+      commanderId: commander,
+      declaredBy: model.currentUserId,
+      at,
+    }));
+    act({ kind: 'incident', pageId: page.id, incidentId, title: incidentTitle });
     notify(`Incident ${incidentId} declared`);
     onClose();
   };

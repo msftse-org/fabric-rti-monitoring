@@ -1,0 +1,20 @@
+{
+  "mode": "Operate",
+  "buildPath": "code-led",
+  "world": "Convention-directed extension of the existing RTI app shell",
+  "authority": [
+    "apps/datadog-mock/packages/frontend/src/styles/shell.css",
+    "apps/datadog-mock/packages/frontend/src/lib/prefs.ts",
+    "apps/coralogix-mock/packages/frontend/src/components/NavRail.tsx",
+    "apps/coralogix-mock/packages/frontend/src/components/TopBar.tsx",
+    "apps/coralogix-mock/packages/frontend/src/styles/shell.css"
+  ],
+  "brandCommitment": "User pinned the Datadog and Coralogix apps as conventions. Reuse native shell grammar with neutral RTI branding; no ornamental concept, vendor impersonation or fake AI controls.",
+  "firstViewport": "76px dark left rail, 48px compact breadcrumb topbar, local-only status and functional theme toggle. Compact content heading and vendor selector lead into a guided source-only calculator, OTel form or ruled migration register.",
+  "costComposition": "Source usage input then submitted results. Both vendors expose logs/traces/metrics GB/day; Datadog also hosts/APM hosts. Source assumptions and quoted rates are expandable. No target inputs or overrides. Results lead with Planning estimate, prominent uncertainty and a lower-activity to continuous-query illustrative range; source ledger and expandable read-only target assumptions follow. Legacy totals are view-only.",
+  "otelComposition": "Preserve guided essential inputs then generated YAML, dated inventory loading, additive merge safety and editable destination overrides. No automatic deployment.",
+  "signatureInteraction": "Navigation preserves existing guided route/focus behavior; mobile drawer traps keyboard focus, Escape restores the menu trigger, and page selection closes the drawer. Theme toggles native controls and content surfaces, persists locally and defaults to OS preference.",
+  "motion": "Restrained native control hover transitions and existing inspector entrance; reduced motion disables animation.",
+  "truth": "Automatic target calculation is a planning heuristic based on Microsoft's examples, not a validated sizing formula, confidence range, equivalent coverage promise or complete bill. Above the supported range requires pilot sizing; unknown source rates stay unknown.",
+  "responsive": "Desktop rail stays compact; at <=700px it becomes a dismissible drawer. Container queries collapse source fields; 44px touch controls and semantic focus states remain usable without horizontal page overflow."
+}

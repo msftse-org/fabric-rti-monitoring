@@ -123,8 +123,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  height: var(--topbar-h);
-  padding: 0 14px 0 20px;
+  min-height: var(--topbar-h);
+  padding: 4px 14px 4px 20px;
   background: var(--bg-deep);
   border-bottom: 1px solid var(--border-soft);
   flex: none;

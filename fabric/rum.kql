@@ -1,0 +1,23 @@
+// Optional browser RUM schema. Azure Monitor sends Event Hubs messages as
+// {"records":[...]}; retain each envelope so no records in a batch are lost.
+
+.create-merge table RUMEnvelopes (Records:dynamic)
+
+.create-or-alter table RUMEnvelopes ingestion json mapping 'RUMAzureMonitorMapping' '[{"column":"Records","Properties":{"path":"$.records"}}]'
+
+.alter-merge table RUMEnvelopes policy retention softdelete = 7d
+
+.alter table RUMEnvelopes policy caching hot = 1d
+
+.alter table RUMEnvelopes policy ingestiontime true
+
+// Application Insights exports identify the record type using "type"; other
+// Azure Monitor resource logs can use "category".
+.create-or-alter function with (folder='RUM', docstring='Expand browser telemetry records exported by Azure Monitor') RUMEvents(lookback:timespan=24h) {
+    RUMEnvelopes
+    | where ingestion_time() > ago(lookback + 1h)
+    | mv-expand Record=Records
+    | extend Timestamp=todatetime(Record["time"]), Type=coalesce(tostring(Record["type"]), tostring(Record["category"]))
+    | where Timestamp > ago(lookback)
+    | project Timestamp, Type, Properties=Record.properties, Record
+}

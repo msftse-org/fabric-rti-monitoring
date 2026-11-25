@@ -18,7 +18,7 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
-import { clock } from '@oncall';
+import { TelemetryStatus } from '@telemetry';
 import { useData } from '../lib/oncall';
 import { href, navigate, paths, type Route, type Section, sectionOf } from '../lib/router';
 import { useToast } from '../lib/toast';
@@ -81,7 +81,8 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function TopBar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean }) {
-  const { onCall, mode, fellBack } = useData();
+  const telemetry = useData();
+  const { onCall } = telemetry;
   const [query, setQuery] = useState('');
   const open = onCall?.model.pages.filter((page) => page.status === 'triggered').length ?? 0;
   const submit = (event: FormEvent) => {
@@ -127,13 +128,7 @@ function TopBar({ onMenu, menuOpen }: { onMenu: () => void; menuOpen: boolean })
         <input id="global-search" type="search" placeholder="Search pages by number, title or team" value={query} onChange={(event) => setQuery(event.target.value)} />
       </form>
       <div className="topbar__end">
-        {onCall && (
-          <span className="asof" title={mode === 'live' ? 'Live: read from the Eventhouse through the local API' : fellBack ? 'Snapshot: the local API was unreachable' : 'Snapshot of Eventhouse data bundled with the app'}>
-            <span className={`asof__dot ${mode === 'live' ? 'asof__dot--live' : ''}`} aria-hidden />
-            <span className="asof__mode">{mode === 'live' ? 'Live' : 'Snapshot'}</span>
-            <span className="asof__time">as of {clock(onCall.now)} UTC</span>
-          </span>
-        )}
+        <TelemetryStatus telemetry={telemetry} />
         <a className="icon-btn topbar__bell" href={href(paths.pages())} aria-label={`${open} triggered pages`}>
           <Bell size={18} />
           {open > 0 && <span className="topbar__count" aria-hidden>{open}</span>}

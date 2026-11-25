@@ -285,8 +285,8 @@
   flex: none;
   align-items: center;
   gap: 10px;
-  height: var(--topbar-h);
-  padding: 0 16px;
+  min-height: var(--topbar-h);
+  padding: 4px 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -309,6 +309,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .topbar__create {
@@ -644,8 +647,9 @@
   }
 
   .topbar {
-    padding: 0 8px 0 4px;
+    padding: 4px 8px 4px 4px;
     gap: 6px;
+    flex-wrap: wrap;
   }
 
   .topbar .icon-btn.topbar__menu {
@@ -657,6 +661,16 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .topbar__tools {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .topbar__tools .telemetry-status {
+    flex: 1 1 100%;
+    max-width: 100%;
+    order: 1;
   }
 
   .topbar__tools .popover:has(> .chip-btn:not(.chip-btn--time)),

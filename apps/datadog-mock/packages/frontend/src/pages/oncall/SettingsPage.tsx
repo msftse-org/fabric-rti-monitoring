@@ -3,7 +3,8 @@ import { DAY, MINUTE, dateTime, shiftAround, shiftsFor, type Channel, type Notif
 import { useOnCall } from '../../lib/oncall';
 import { paths } from '../../lib/router';
 import { useInert, useToast } from '../../lib/toast';
-import { Avatar, CHANNELS, PersonPill, Section, TeamPill } from '../../components/oncall/kit';
+import { Avatar, PersonPill, Section, TeamPill } from '../../components/oncall/kit';
+import { CHANNELS } from '../../components/oncall/channels';
 
 const REMINDER_MINUTES = 10;
 

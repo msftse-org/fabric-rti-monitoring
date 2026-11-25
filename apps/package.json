@@ -3,37 +3,41 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Three unofficial Rayfin (Fabric Apps) mocks of Datadog, Coralogix and groundcover, driven by the AKS OpenTelemetry data in the Fabric Eventhouse.",
+  "description": "Rayfin observability mocks, RTI On-Call, and a local-first observability migration and cost advisor.",
   "workspaces": [
     "telemetry",
     "oncall",
     "datadog-mock/packages/frontend",
     "coralogix-mock/packages/frontend",
     "groundcover-mock/packages/frontend",
-    "rti-oncall/packages/frontend"
+    "rti-oncall/packages/frontend",
+    "migration-advisor/packages/frontend"
   ],
   "scripts": {
     "api": "npm run -w @rti-mock/telemetry api",
     "snapshot": "npm run -w @rti-mock/telemetry snapshot --",
-    "test": "npm run -w @rti-mock/telemetry test && npm run -w @rti-mock/oncall test && npm run -w @rti-mock/coralogix-frontend test && npm --prefix rti-oncall/packages/functions test",
+    "test:telemetry-client": "node --test telemetry/client/test/*.test.mjs",
+    "test": "npm run test:telemetry-client && npm run -w @rti-mock/telemetry test && npm run -w @rti-mock/oncall test && npm run -w @rti-mock/coralogix-frontend test && npm --prefix rti-oncall/packages/functions test && npm run -w @rti-mock/migration-advisor-frontend test",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "dev:datadog": "npm run -w @rti-mock/datadog-frontend dev",
     "dev:coralogix": "npm run -w @rti-mock/coralogix-frontend dev",
     "dev:groundcover": "npm run -w @rti-mock/groundcover-frontend dev",
-    "dev:rti-oncall": "npm run -w @rti-mock/rti-oncall-frontend dev"
+    "dev:rti-oncall": "npm run -w @rti-mock/rti-oncall-frontend dev",
+    "dev:migration-advisor": "npm run -w @rti-mock/migration-advisor-frontend dev"
   },
   "dependencies": {
+    "@azure/msal-browser": "^4.30.0",
     "lucide-react": "^1.17.0",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react-swc": "^4.3.1",
     "typescript": "~5.7.2",
-    "vite": "^8.0.16"
+    "vite": "^8.3.8"
   },
   "license": "MIT"
 }

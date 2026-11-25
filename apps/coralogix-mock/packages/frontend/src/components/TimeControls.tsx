@@ -15,7 +15,7 @@ export function TimeControls() {
       <button type="button" className="icon-btn" aria-label="Reset time range" onClick={() => setMinutes(DEFAULT_MINUTES)}>
         <Undo2 size={15} />
       </button>
-      <button type="button" className="icon-btn icon-btn--accent" aria-label="Refresh data" onClick={telemetry.refresh}>
+      <button type="button" className="icon-btn icon-btn--accent" aria-label="Refresh data" disabled={telemetry.loading} onClick={telemetry.refresh}>
         <RefreshCw size={15} className={telemetry.loading ? 'spin' : undefined} />
       </button>
       <div className="time-pill">

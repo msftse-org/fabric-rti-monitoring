@@ -1,66 +1,141 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TelemetryBundle } from './types';
+import { createLiveClient } from './browser-live';
+import { readLiveConfig, telemetryTransport } from './live-config';
+import { ConnectRequiredError, KustoHttpError } from './kusto-browser';
+import { createRefreshGate, initialRefreshState, liveSuccess, refreshFailure, type RefreshState } from './refresh-state';
 
 export type TelemetryMode = 'live' | 'snapshot';
 
-export interface TelemetryState {
-  bundle: TelemetryBundle | null;
-  /** `live` reads the loopback API; `snapshot` reads the bundled JSON file. */
-  mode: TelemetryMode | null;
-  loading: boolean;
-  error: string | null;
-  /** Set when live mode was requested but the API was unreachable. */
-  fellBack: boolean;
+export interface TelemetryState extends RefreshState {
+  /** Browser live uses delegated Kusto authentication; local live uses the loopback API. */
+  liveConfigured: boolean;
+  connecting: boolean;
+  connect: () => Promise<void>;
   refresh: () => void;
 }
 
-const requested = (import.meta.env.VITE_TELEMETRY_MODE as string | undefined) ?? (import.meta.env.PROD ? 'snapshot' : 'live');
+const setup = readLiveConfig(import.meta.env);
+const transport = telemetryTransport(import.meta.env, Boolean(setup.config), Boolean(setup.error));
 const snapshotUrl = `${import.meta.env.BASE_URL}telemetry.snapshot.json`;
+let browserClient: ReturnType<typeof createLiveClient> | null = null;
+function client() {
+  if (!setup.config) throw new Error('Live telemetry is not configured.');
+  browserClient ??= createLiveClient(setup.config, new URL('/auth-redirect.html', window.location.origin).href);
+  return browserClient;
+}
 
-async function getJson(url: string, timeoutMs: number): Promise<TelemetryBundle> {
-  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const body = (await response.json()) as TelemetryBundle;
-  if (body.schemaVersion !== 1 || !Array.isArray(body.services)) throw new Error('Unexpected telemetry payload');
+async function getJson(url: string, signal: AbortSignal): Promise<TelemetryBundle> {
+  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) });
+  if (!response.ok) throw new Error(`Telemetry could not be loaded (HTTP ${response.status}). Try refreshing.`);
+  const body = await response.json() as TelemetryBundle;
+  if (body.schemaVersion !== 1 || !Array.isArray(body.services) || !Number.isFinite(Date.parse(body.generatedAt))) {
+    throw new Error('Unexpected telemetry payload.');
+  }
   return body;
 }
 
-/**
- * Loads the telemetry bundle. In `live` mode it polls the local API every
- * `refreshMs` and falls back to the bundled snapshot when the API is not running.
- */
+/** Snapshot stays usable before sign-in. Only an explicit user gesture may open MSAL. */
 export function useTelemetry(options: { minutes?: number; refreshMs?: number } = {}): TelemetryState {
   const { minutes = 60, refreshMs = 15_000 } = options;
-  const [state, setState] = useState<Omit<TelemetryState, 'refresh'>>({ bundle: null, mode: null, loading: true, error: null, fellBack: false });
-  const generation = useRef(0);
-
-  const load = useCallback(async () => {
-    const current = ++generation.current;
-    const apply = (next: Omit<TelemetryState, 'refresh'>) => {
-      if (current === generation.current) setState(next);
-    };
-    if (requested === 'live') {
-      try {
-        const bundle = await getJson(`/api/telemetry?minutes=${minutes}`, 20_000);
-        return apply({ bundle: { ...bundle, source: 'live' }, mode: 'live', loading: false, error: null, fellBack: false });
-      } catch {
-        // Fall through to the snapshot below.
-      }
-    }
-    try {
-      const bundle = await getJson(snapshotUrl, 20_000);
-      apply({ bundle: { ...bundle, source: 'snapshot' }, mode: 'snapshot', loading: false, error: null, fellBack: requested === 'live' });
-    } catch (error) {
-      apply({ bundle: null, mode: null, loading: false, error: error instanceof Error ? error.message : String(error), fellBack: false });
-    }
-  }, [minutes]);
+  const [state, setState] = useState(initialRefreshState);
+  const [connecting, setConnecting] = useState(false);
+  const [session, setSession] = useState(0);
+  const stateRef = useRef(state);
+  const loadRef = useRef<() => void>(() => undefined);
+  const mounted = useRef(false);
+  const connectingRef = useRef(false);
+  const refresh = useCallback(() => loadRef.current(), []);
 
   useEffect(() => {
-    void load();
-    if (requested !== 'live') return undefined;
-    const timer = window.setInterval(() => void load(), refreshMs);
-    return () => window.clearInterval(timer);
-  }, [load, refreshMs]);
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
-  return { ...state, refresh: () => void load() };
+  useEffect(() => {
+    const gate = createRefreshGate();
+    const controller = new AbortController();
+    let lastStartedAt = 0;
+    const apply = (next: RefreshState, active: () => boolean) => {
+      if (!active()) return;
+      stateRef.current = next;
+      setState(next);
+    };
+    const load = () => gate.run(async (active) => {
+      lastStartedAt = Date.now();
+      apply({ ...stateRef.current, loading: true }, active);
+      let liveError: string | null = transport === 'snapshot' ? setup.error : null;
+      let needsConnect = false;
+      if (transport !== 'snapshot') {
+        try {
+          const bundle = transport === 'browser'
+            ? await client().load(minutes, controller.signal)
+            : await getJson(`/api/telemetry?minutes=${encodeURIComponent(minutes)}`, controller.signal);
+          apply(liveSuccess(bundle, new Date().toISOString()), active);
+          return;
+        } catch (error) {
+          // Do not display raw MSAL/network errors: they can contain identity details.
+          needsConnect = error instanceof ConnectRequiredError || (error instanceof KustoHttpError && error.status === 401);
+          liveError = needsConnect ? 'Sign in to connect live Eventhouse data.'
+            : error instanceof KustoHttpError ? error.message
+              : 'Live telemetry refresh failed. Check your connection; automatic refresh will retry.';
+          if (!active()) return;
+          if (stateRef.current.bundle) {
+            apply(refreshFailure(stateRef.current, liveError, needsConnect), active);
+            return;
+          }
+        }
+      }
+      try {
+        const bundle = await getJson(snapshotUrl, controller.signal);
+        apply({
+          bundle: { ...bundle, source: 'snapshot' }, mode: 'snapshot', loading: false,
+          error: liveError, fellBack: transport !== 'snapshot', needsConnect, lastSuccessAt: null,
+        }, active);
+      } catch {
+        apply(refreshFailure(stateRef.current, liveError
+          ? `${liveError} The bundled snapshot is also unavailable. Retry with Refresh.`
+          : 'The bundled snapshot is unavailable. Retry with Refresh.', needsConnect), active);
+      }
+    });
+    loadRef.current = () => { void load(); };
+    void load();
+    if (transport === 'snapshot') return () => { gate.invalidate(); controller.abort(); loadRef.current = () => undefined; };
+    const visibleRefresh = () => {
+      if (document.visibilityState === 'visible' && !stateRef.current.needsConnect && Date.now() - lastStartedAt >= 5_000) void load();
+    };
+    // Signed-out sessions do not repeatedly query Eventhouse or reload the snapshot.
+    const timer = window.setInterval(visibleRefresh, Math.max(15_000, refreshMs));
+    window.addEventListener('focus', visibleRefresh);
+    document.addEventListener('visibilitychange', visibleRefresh);
+    return () => {
+      gate.invalidate();
+      controller.abort();
+      loadRef.current = () => undefined;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', visibleRefresh);
+      document.removeEventListener('visibilitychange', visibleRefresh);
+    };
+  }, [minutes, refreshMs, session]);
+
+  const connect = useCallback(async () => {
+    if (transport !== 'browser' || connectingRef.current) return;
+    connectingRef.current = true;
+    setConnecting(true);
+    try {
+      await client().connect();
+      if (mounted.current) setSession((value) => value + 1);
+    } catch {
+      if (mounted.current) {
+        const next = refreshFailure(stateRef.current, 'Sign-in was not completed. Allow popups and select Connect live data to try again.', true);
+        stateRef.current = next;
+        setState(next);
+      }
+    } finally {
+      connectingRef.current = false;
+      if (mounted.current) setConnecting(false);
+    }
+  }, []);
+
+  return { ...state, liveConfigured: transport === 'browser', connecting, connect, refresh };
 }

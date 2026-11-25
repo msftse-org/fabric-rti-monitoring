@@ -14,6 +14,7 @@ export type Route =
   | { name: 'dashboard'; id: string }
   | { name: 'oncall' }
   | { name: 'oncall-pages'; status: PageFilter; pageId: number | null }
+  | { name: 'oncall-incidents' }
   | { name: 'oncall-teams' }
   | { name: 'oncall-team'; id: string }
   | { name: 'oncall-schedules' }
@@ -69,6 +70,8 @@ function parseOnCall(section: string | undefined, id: string | undefined, params
       const pageId = Number(id);
       return { name: 'oncall-pages', status: status && PAGE_FILTERS.includes(status) ? status : 'active', pageId: id && Number.isFinite(pageId) ? pageId : null };
     }
+    case 'incidents':
+      return { name: 'oncall-incidents' };
     case 'teams':
       return id ? { name: 'oncall-team', id } : { name: 'oncall-teams' };
     case 'schedules':
@@ -126,6 +129,7 @@ export const paths = {
   oncall: () => '/on-call',
   oncallPages: (status: PageFilter = 'active') => `/on-call/pages${status === 'active' ? '' : `?status=${status}`}`,
   oncallPage: (id: number, status: PageFilter = 'active') => `/on-call/pages/${id}${status === 'active' ? '' : `?status=${status}`}`,
+  oncallIncidents: () => '/on-call/incidents',
   oncallTeams: () => '/on-call/teams',
   oncallTeam: (id: string) => `/on-call/teams/${encodeURIComponent(id)}`,
   oncallSchedules: () => '/on-call/schedules',

@@ -517,6 +517,79 @@
   align-items: flex-start;
 }
 
+.alert-incident-record {
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alert-incident-record .alert-rule-main {
+  flex: 1;
+}
+
+.alert-incident-record .alert-rule-copy {
+  width: 100%;
+}
+
+.alert-incident-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  color: var(--text-dim);
+  font-size: 10.5px;
+}
+
+.alert-incident-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.alert-incident-meta code {
+  font-family: var(--mono);
+}
+
+.alert-incident-history {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.alert-incident-history summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--link);
+}
+
+.alert-incident-history ol {
+  display: grid;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0 0 0 16px;
+}
+
+.alert-incident-history li {
+  padding-left: 2px;
+}
+
+.alert-incident-history time {
+  margin-right: 8px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.alert-incident-record > .alert-rule-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.alert-incident-record > .alert-simulation-caption {
+  flex: none;
+  align-self: center;
+}
+
 .alert-simulation-caption {
   display: inline-flex;
   align-items: center;
@@ -565,6 +638,11 @@
     justify-content: flex-end;
   }
 
+  .alert-incident-record > .alert-rule-actions {
+    width: 100%;
+    padding-left: 38px;
+  }
+
   .alert-destination-footer {
     align-items: flex-start;
     flex-direction: column;
@@ -606,6 +684,16 @@
     justify-items: initial;
     gap: 7px;
     padding-left: 38px;
+  }
+
+  .alert-incident-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .alert-incident-record > .alert-rule-actions {
+    justify-content: flex-start;
+    padding-left: 0;
   }
 
   .alert-form-grid {

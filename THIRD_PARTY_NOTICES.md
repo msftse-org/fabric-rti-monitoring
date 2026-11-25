@@ -53,3 +53,27 @@ The optional AKS demo installs the OpenTelemetry Python SDK, the OTLP HTTP
 exporter, and their dependencies from PyPI when its pods start. The versions are
 pinned in `k8s/otel-demo/files/requirements.txt`. The packages keep their
 upstream licenses and are not redistributed by this repository.
+
+## Migration advisor typography
+
+The migration advisor bundles IBM Plex Sans through
+[`@fontsource/ibm-plex-sans`](https://fontsource.org/fonts/ibm-plex-sans).
+Copyright 2019 IBM Corp. The font software retains the
+[SIL Open Font License 1.1](https://openfontlicense.org/), not the sample's MIT
+license. Its copyright and license notice is included with the app at
+[`public/licenses/ibm-plex-sans.txt`](apps/migration-advisor/packages/frontend/public/licenses/ibm-plex-sans.txt).
+
+## Application Insights browser SDK
+
+The optional migration advisor browser telemetry bundles the Microsoft
+Application Insights JavaScript SDK, DynamicProto-JS, and NevWare21 `ts-utils`
+and `ts-async`. These components are distributed under the MIT license. Their
+copyright and license notices are included with the app at
+[`public/licenses/application-insights-sdk.txt`](apps/migration-advisor/packages/frontend/public/licenses/application-insights-sdk.txt).
+
+## Microsoft Authentication Library
+
+The optional observability mock apps bundle `@azure/msal-browser` and its
+`@azure/msal-common` dependency for delegated Microsoft Entra sign-in. These
+Microsoft components are distributed under the MIT license; their notices are
+included with each app's public license files.
